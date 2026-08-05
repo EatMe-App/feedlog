@@ -5,6 +5,7 @@
 
 import { createBlobStorage } from '@nuxthub/core/blob'
 import { createDriver } from '@nuxthub/core/blob/drivers/s3'
+import { AwsClient } from 'aws4fetch'
 import { consola } from 'consola'
 
 const logger = consola.withTag('blob')
@@ -33,11 +34,26 @@ export default defineNitroPlugin(() => {
   // when no endpoint is given, so a missing region on a non-AWS service
   // would yield a literal `undefined` in the host. Refuse to register.
   if (!endpoint && !region) {
-    logger.warn('S3 disabled: set S3_REGION (for AWS) or S3_ENDPOINT (for R2/MinIO/OSS)')
+    logger.warn('S3 disabled: set S3_REGION (for AWS) or S3_ENDPOINT (for R2/MinIO/RustFS/OSS)')
     return
   }
 
   const endpointIncludesBucket = isBucketEndpoint(endpoint, bucket)
+
+  // Auto-create bucket if using a custom endpoint (e.g. RustFS or MinIO)
+  if (endpoint && bucket && !endpointIncludesBucket) {
+    const aws = new AwsClient({
+      accessKeyId,
+      secretAccessKey,
+      region,
+      service: 's3',
+    })
+    const bucketUrl = `${endpoint.replace(/\/+$/, '')}/${bucket}`
+    aws.fetch(bucketUrl, { method: 'PUT' }).catch((err) => {
+      logger.debug('S3 auto-create bucket check failed or already exists:', err)
+    })
+  }
+
   const storage = createBlobStorage(createDriver({
     accessKeyId,
     secretAccessKey,
