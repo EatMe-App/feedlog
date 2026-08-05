@@ -14,15 +14,16 @@ const loading = ref(false)
 interface AuthMethods {
   google: boolean
   github: boolean
+  supabase: boolean
   email: boolean
   emailVerification: boolean
 }
 const { data: authCfg } = await useFetch<AuthMethods>('/api/auth-config', {
   key: 'auth-config',
   // If the endpoint hiccups, fall back to email-only so the modal still renders.
-  default: () => ({ google: false, github: false, email: true, emailVerification: false }),
+  default: () => ({ google: false, github: false, supabase: false, email: true, emailVerification: false }),
 })
-const hasOAuth = computed(() => !!(authCfg.value?.google || authCfg.value?.github))
+const hasOAuth = computed(() => !!(authCfg.value?.google || authCfg.value?.github || authCfg.value?.supabase))
 const emailEnabled = computed(() => !!authCfg.value?.email)
 const showSeparator = computed(() => hasOAuth.value && emailEnabled.value)
 
@@ -96,20 +97,30 @@ function buildCallbackURL(): string {
   return `${authDomain}/api/auth/post-login?return=${encodeURIComponent(returnTo)}`
 }
 
-async function loginWithSocial(provider: 'google' | 'github') {
+async function loginWithSocial(provider: 'google' | 'github' | 'supabase') {
   loading.value = true
 
-  const res = await $fetch<{ url: string }>('/api/auth/sign-in/social', {
-    method: 'POST',
-    body: { provider, callbackURL: buildCallbackURL() },
-  })
+  let resUrl = ''
+  if (provider === 'supabase') {
+    const res = await $fetch<{ url: string }>('/api/auth/sign-in/oauth2', {
+      method: 'POST',
+      body: { providerId: 'supabase', callbackURL: buildCallbackURL() },
+    })
+    resUrl = res.url
+  } else {
+    const res = await $fetch<{ url: string }>('/api/auth/sign-in/social', {
+      method: 'POST',
+      body: { provider, callbackURL: buildCallbackURL() },
+    })
+    resUrl = res.url
+  }
 
   const width = 500
   const height = 600
   const left = window.screenX + (window.outerWidth - width) / 2
   const top = window.screenY + (window.outerHeight - height) / 2
 
-  const oauthUrl = new URL(res.url)
+  const oauthUrl = new URL(resUrl)
   if (provider === 'google') {
     oauthUrl.searchParams.set('prompt', 'select_account')
   }
@@ -345,6 +356,17 @@ const showPassword = ref(false)
           >
             <Icon name="mdi:github" class="mr-2 size-5" />
             {{ $t('auth.signIn.github') }}
+          </Button>
+          <Button
+            v-if="authCfg?.supabase"
+            class="w-full"
+            variant="outline"
+            size="lg"
+            :disabled="loading"
+            @click="loginWithSocial('supabase')"
+          >
+            <Icon name="logos:supabase-icon" class="mr-2 size-5" />
+            {{ $t('auth.signIn.supabase') }}
           </Button>
         </div>
 

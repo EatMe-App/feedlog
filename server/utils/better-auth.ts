@@ -1,6 +1,4 @@
-import { betterAuth, type BetterAuthOptions } from 'better-auth'
-import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { admin, bearer, customSession, organization } from 'better-auth/plugins'
+import { admin, bearer, customSession, genericOAuth, organization } from 'better-auth/plugins'
 import { defu } from 'defu'
 import { eq } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
@@ -19,7 +17,12 @@ const systemAdminEmails = env.SYSTEM_ADMIN_EMAILS?.split(',').map(s => s.trim())
 
 const hasGoogle = !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
 const hasGithub = !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET)
-const hasOAuth = hasGoogle || hasGithub
+const hasSupabase = !!(
+  env.SUPABASE_OAUTH_CLIENT_ID &&
+  env.SUPABASE_OAUTH_CLIENT_SECRET &&
+  (env.SUPABASE_PROJECT_REF || env.SUPABASE_OAUTH_DISCOVERY_URL)
+)
+const hasOAuth = hasGoogle || hasGithub || hasSupabase
 const hasEmailProvider = !!env.RESEND_API_KEY
 
 function parseBool(v: string | undefined): boolean | undefined {
@@ -32,7 +35,7 @@ const requireEmailVerification = parseBool(env.AUTH_EMAIL_VERIFY) ?? hasEmailPro
 
 if (!hasOAuth && !emailLoginEnabled) {
   throw new Error(
-    '[auth] No sign-in method configured. Enable OAuth (GOOGLE_CLIENT_ID / GITHUB_CLIENT_ID) or set AUTH_EMAIL_ENABLED=true.',
+    '[auth] No sign-in method configured. Enable OAuth (GOOGLE_CLIENT_ID / GITHUB_CLIENT_ID / SUPABASE_OAUTH_CLIENT_ID) or set AUTH_EMAIL_ENABLED=true.',
   )
 }
 
@@ -192,6 +195,29 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
         const orgList = await loadOrgList(user.id)
         return { user, session, orgList }
       }),
+      ...(hasSupabase
+        ? [
+            genericOAuth({
+              config: [
+                {
+                  providerId: 'supabase',
+                  clientId: env.SUPABASE_OAUTH_CLIENT_ID!,
+                  clientSecret: env.SUPABASE_OAUTH_CLIENT_SECRET!,
+                  discoveryUrl:
+                    env.SUPABASE_OAUTH_DISCOVERY_URL
+                    || `https://${env.SUPABASE_PROJECT_REF}.supabase.co/auth/v1/.well-known/openid-configuration`,
+                  scopes: ['openid', 'email', 'profile'],
+                  mapProfileToUser: (profile: Record<string, any>) => ({
+                    id: profile.sub,
+                    email: profile.email,
+                    name: profile.user_metadata?.full_name || profile.name || profile.email?.split('@')[0],
+                    image: profile.user_metadata?.avatar_url || profile.picture || profile.avatar_url,
+                  }),
+                },
+              ],
+            }),
+          ]
+        : []),
       ...(overrides.extraPlugins ?? []),
     ],
     session: {
@@ -254,6 +280,7 @@ export const auth = new Proxy({} as AuthInstance, {
 export const authConfig = {
   google: hasGoogle,
   github: hasGithub,
+  supabase: hasSupabase,
   email: emailLoginEnabled,
   emailVerification: !!emailVerification,
   // True when an outbound email provider (Resend) is configured. Surfaced

@@ -1,5 +1,5 @@
 import { createAuthClient } from 'better-auth/vue'
-import { adminClient, customSessionClient, organizationClient } from 'better-auth/client/plugins'
+import { adminClient, customSessionClient, genericOAuthClient, organizationClient } from 'better-auth/client/plugins'
 import { ac, contributor, manager, owner } from '~~/shared/auth/permissions'
 import type { auth } from '~~/server/utils/better-auth'
 
@@ -12,5 +12,6 @@ export const authClient = createAuthClient({
     adminClient(),
     organizationClient({ ac, roles: { owner, manager, contributor } }),
     customSessionClient<typeof auth>(),
+    genericOAuthClient(),
   ],
 })

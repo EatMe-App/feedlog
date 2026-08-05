@@ -319,6 +319,7 @@
       "subtitle": "Sign in to submit feedback, vote, and comment",
       "google": "Continue with Google",
       "github": "Continue with GitHub",
+      "supabase": "Continue with Supabase",
       "or": "or",
       "withEmail": "Sign in with email",
       "noAccount": "Don't have an account?",
