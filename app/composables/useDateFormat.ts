@@ -17,8 +17,13 @@ export function useTimeAgo() {
 
 export function useFormatDate() {
   const { locale } = useI18n()
+  const localeMap: Record<string, string> = {
+    zh: 'zh-CN',
+    de: 'de-DE',
+    en: 'en-US',
+  }
   return (dateStr: string | Date): string =>
-    new Date(dateStr).toLocaleDateString(locale.value === 'zh' ? 'zh-CN' : 'en-US', {
+    new Date(dateStr).toLocaleDateString(localeMap[locale.value] || 'en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',

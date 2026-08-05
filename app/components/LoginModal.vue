@@ -3,6 +3,7 @@ import { toast } from 'vue-sonner'
 
 const { signIn, signUp, requestPasswordReset } = useAuth()
 const { t } = useI18n()
+const portal = usePortalOrg()
 
 const open = defineModel<boolean>('open', { default: false })
 
@@ -365,8 +366,9 @@ const showPassword = ref(false)
             :disabled="loading"
             @click="loginWithSocial('supabase')"
           >
-            <Icon name="logos:supabase-icon" class="mr-2 size-5" />
-            {{ $t('auth.signIn.supabase') }}
+            <img v-if="portal.logo" :src="portal.logo" alt="" class="mr-2 size-5 object-contain rounded-sm" />
+            <AppLogo v-else :size="20" class="mr-2 size-5" />
+            {{ $t('auth.signIn.supabase', { name: portal.name }) }}
           </Button>
         </div>
 
