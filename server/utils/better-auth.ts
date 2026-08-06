@@ -209,6 +209,8 @@ export function buildAuthConfig(overrides: AuthConfigOverrides = {}): BetterAuth
                     env.SUPABASE_OAUTH_DISCOVERY_URL
                     || `https://${env.SUPABASE_PROJECT_REF}.supabase.co/auth/v1/.well-known/openid-configuration`,
                   scopes: ['openid', 'email', 'profile'],
+                  pkce: true,
+                  authentication: 'basic',
                   mapProfileToUser: (profile: Record<string, any>) => ({
                     id: profile.sub,
                     email: profile.email,
