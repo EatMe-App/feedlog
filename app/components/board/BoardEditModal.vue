@@ -59,11 +59,11 @@ async function handleSave() {
   <Dialog v-model:open="open">
     <DialogContent
       :show-close-button="false"
-      class="!max-w-[500px] !p-0 !gap-0 overflow-hidden border-border bg-card !rounded-xl"
+      class="w-full max-w-[calc(100vw-1.5rem)] sm:max-w-[500px] !p-0 !gap-0 overflow-hidden border-border bg-card rounded-xl"
     >
       <!-- Header -->
-      <div class="flex items-center justify-between px-8 pt-8 pb-6">
-        <DialogTitle class="font-heading text-xl font-bold">
+      <div class="flex items-center justify-between px-4 sm:px-8 pt-6 sm:pt-8 pb-4 sm:pb-6">
+        <DialogTitle class="font-heading text-lg sm:text-xl font-bold">
           {{ isEdit ? $t('dashboard.boards.editTitle') : $t('dashboard.boards.create') }}
         </DialogTitle>
         <DialogClose class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-secondary transition-colors text-muted-foreground hover:text-primary">
@@ -72,7 +72,7 @@ async function handleSave() {
       </div>
 
       <!-- Form -->
-      <div class="px-8 pb-6 space-y-5">
+      <div class="px-4 sm:px-8 pb-4 sm:pb-6 space-y-4 sm:space-y-5">
         <div>
           <label class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2 block">
             {{ $t('dashboard.boards.nameLabel') }}
@@ -89,14 +89,14 @@ async function handleSave() {
           </label>
           <textarea
             v-model="formDesc"
-            class="w-full px-4 py-3 bg-background/60 border border-border rounded-lg text-sm focus:ring-primary focus:border-primary min-h-[140px] resize-y leading-relaxed"
+            class="w-full px-4 py-3 bg-background/60 border border-border rounded-lg text-sm focus:ring-primary focus:border-primary min-h-[120px] sm:min-h-[140px] resize-y leading-relaxed"
           />
         </div>
         <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
       </div>
 
       <!-- Footer actions -->
-      <div class="flex items-center justify-end gap-4 px-8 py-5 border-t border-border">
+      <div class="flex items-center justify-end gap-3 sm:gap-4 px-4 sm:px-8 py-4 sm:py-5 border-t border-border">
         <DialogClose class="px-5 py-2 text-sm font-heading font-semibold text-muted-foreground hover:text-foreground transition-colors">
           {{ $t('common.cancel') }}
         </DialogClose>

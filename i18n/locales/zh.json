@@ -315,7 +315,7 @@
       "confirm": "确认密码"
     },
     "signIn": {
-      "title": "登录 FeedLog",
+      "title": "登录 {name} 反馈",
       "subtitle": "登录后即可提交反馈、投票和评论",
       "google": "使用 Google 登录",
       "github": "使用 GitHub 登录",

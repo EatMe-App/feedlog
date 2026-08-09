@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useMediaQuery } from '@vueuse/core'
 import '~/assets/css/md-editor-preview.css'
 import { preventShadcnDialogClose } from '~/lib/md-editor-helper';
 import { sanitizeAttachmentHtml } from '~/utils/attachment';
@@ -17,6 +18,11 @@ const title = ref('')
 const content = ref('')
 const submitting = ref(false)
 const error = ref('')
+
+const isMobile = useMediaQuery('(max-width: 639.98px)')
+const fullToolbars = ['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', '-', 'previewOnly']
+const compactToolbars = ['bold', 'italic', '-', 'link', 'image', '-', 'previewOnly']
+const currentToolbars = computed(() => isMobile.value ? compactToolbars : fullToolbars)
 
 const { onUploadImg } = useUploadImg()
 
@@ -139,23 +145,23 @@ watch(open, (v) => {
       :show-close-button="false"
       @pointer-down-outside="preventShadcnDialogClose"
       @escape-key-down="preventShadcnDialogClose"
-      class="!max-w-[800px] !max-h-[calc(100vh-1.5rem)] !p-0 !gap-0 !flex !flex-col overflow-hidden border-none bg-card !rounded-[24px] shadow-warm"
+      class="w-full max-w-[calc(100vw-1.5rem)] sm:max-w-[700px] md:max-w-[800px] max-h-[calc(100dvh-2rem)] !p-0 !gap-0 !flex !flex-col overflow-hidden border-none bg-card rounded-2xl sm:rounded-[24px] shadow-warm"
     >
       <!-- Close button -->
-      <DialogClose class="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full hover:bg-secondary transition-colors text-muted-foreground hover:text-primary z-10">
+      <DialogClose class="absolute top-4 right-4 sm:top-6 sm:right-6 w-8 h-8 flex items-center justify-center rounded-full hover:bg-secondary transition-colors text-muted-foreground hover:text-primary z-10">
         <Icon name="lucide:x" size="20" />
       </DialogClose>
 
       <!-- Form content -->
-      <div class="px-4 sm:px-8 md:px-12 pt-10 pb-8 flex-1 flex flex-col gap-5 min-h-0 overflow-y-auto">
+      <div class="px-4 sm:px-6 md:px-8 pt-6 sm:pt-8 pb-6 flex-1 flex flex-col gap-4 sm:gap-5 min-h-0 overflow-y-auto">
         <!-- Select Board -->
-        <div class="flex flex-col gap-2.5 shrink-0">
+        <div class="flex flex-col gap-2 shrink-0">
           <span class="text-xs font-bold uppercase tracking-widest text-muted-foreground">{{ $t('post.submit.selectBoard') }}</span>
-          <div class="flex flex-wrap gap-2.5">
+          <div class="flex flex-wrap gap-2">
             <button
               v-for="board in boards"
               :key="board.id"
-              class="px-5 py-2 rounded-full border text-[13px] font-semibold transition-all"
+              class="px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-full border text-xs sm:text-[13px] font-semibold transition-all"
               :class="selectedBoardId === board.id
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'border-border bg-card text-muted-foreground hover:border-accent hover:text-foreground'"
@@ -169,13 +175,13 @@ watch(open, (v) => {
         <!-- Title input -->
         <Input
           v-model="title"
-          class="h-12 text-lg font-heading font-bold shrink-0"
+          class="h-10 sm:h-12 text-base sm:text-lg font-heading font-bold shrink-0"
           :placeholder="$t('post.submit.titlePlaceholder')"
           :maxlength="200"
         />
 
         <!-- Editor + Similar Hint: shared fixed-height container -->
-        <div class="flex flex-col h-[420px] min-h-[200px] gap-2">
+        <div class="flex flex-col h-[240px] sm:h-[320px] md:h-[400px] min-h-[180px] gap-2">
           <!-- Markdown editor: flex-1 shrinks when hint expands -->
           <ClientOnly>
             <div class="editor-preview-styled flex-1 min-h-[120px] transition-all duration-300">
@@ -185,7 +191,7 @@ watch(open, (v) => {
                 :placeholder="$t('post.submit.bodyPlaceholder')"
                 :preview="false"
                 :max-length="10000"
-                :toolbars="['bold', 'italic', 'strikeThrough', '-', 'title', 'unorderedList', 'orderedList', '-', 'link', 'image', 'code', 'codeRow', '-', 'previewOnly']"
+                :toolbars="currentToolbars"
                 :sanitize="sanitizeAttachmentHtml"
                 style="height: 100%"
                 @on-upload-img="onUploadImg"

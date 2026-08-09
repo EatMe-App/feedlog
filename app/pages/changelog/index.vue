@@ -39,7 +39,7 @@ function collapseDefaultForIndex(index: number) {
 </script>
 
 <template>
-  <div class="flex-1 flex flex-col min-w-0 max-w-3xl mx-auto w-full min-h-0">
+  <div class="flex-1 flex flex-col min-w-0 max-w-3xl mx-auto w-full min-h-0 pb-12 sm:pb-16">
     <div class="pb-3 sm:pb-4 md:pb-8">
       <div class="flex flex-col gap-1.5 sm:gap-2 md:flex-row md:items-baseline md:justify-between md:gap-4">
         <div class="min-w-0">
@@ -59,10 +59,12 @@ function collapseDefaultForIndex(index: number) {
     </div>
 
     <!-- Empty -->
-    <div v-else-if="allItems.length === 0" class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-      <Icon name="lucide:newspaper" size="48" class="mb-4 opacity-50" />
-      <p class="text-lg font-medium">{{ $t('changelog.empty') }}</p>
-      <p class="text-sm mt-1">{{ $t('changelog.emptyHint') }}</p>
+    <div v-else-if="allItems.length === 0" class="flex flex-col items-center justify-center py-12 sm:py-16 px-6 text-center bg-card border border-border rounded-xl shadow-sm my-4">
+      <div class="w-12 h-12 rounded-full bg-secondary/80 flex items-center justify-center mb-3">
+        <Icon name="lucide:newspaper" size="24" class="text-muted-foreground" />
+      </div>
+      <p class="text-base sm:text-lg font-bold text-foreground">{{ $t('changelog.empty') }}</p>
+      <p class="text-xs sm:text-sm text-muted-foreground mt-1 max-w-md">{{ $t('changelog.emptyHint') }}</p>
     </div>
 
     <template v-else>

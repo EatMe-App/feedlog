@@ -24,6 +24,7 @@ useHead({ title: () => t('auth.invite.joinTitle') })
 // to /?login=1) keeps the user on /invite so the page can transition into
 // 'match' / 'mismatch' state the moment the session refreshes.
 const loginModal = useLoginModal()
+const portal = usePortalOrg()
 
 const id = computed(() => {
   const raw = route.query.id
@@ -121,7 +122,13 @@ const userInitials = computed(() => {
          layout's <LoginModal/> mount is absent; mount our own here. -->
     <LoginModal v-model:open="loginModal.isOpen.value" />
     <div class="w-full max-w-md text-center">
-      <AppLogo :size="44" class="mx-auto mb-6" />
+      <img
+        v-if="portal.logo"
+        :src="portal.logo"
+        :alt="portal.name"
+        class="mx-auto mb-6 size-11 rounded-xl object-cover"
+      >
+      <AppLogo v-else :size="44" class="mx-auto mb-6" />
 
       <template v-if="state === 'loading'">
         <p class="text-sm text-muted-foreground">{{ $t('auth.invite.loading') }}</p>

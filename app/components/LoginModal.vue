@@ -330,8 +330,14 @@ const showPassword = ref(false)
       <!-- State 1: Sign In (OAuth first) -->
       <template v-if="state === 'sign-in'">
         <DialogHeader class="text-center space-y-2">
-          <AppLogo :size="48" class="mx-auto" />
-          <DialogTitle class="font-heading text-xl">{{ $t('auth.signIn.title') }}</DialogTitle>
+          <img
+            v-if="portal.logo"
+            :src="portal.logo"
+            :alt="portal.name"
+            class="mx-auto size-12 rounded-xl object-cover"
+          >
+          <AppLogo v-else :size="48" class="mx-auto" />
+          <DialogTitle class="font-heading text-xl">{{ $t('auth.signIn.title', { name: portal.name }) }}</DialogTitle>
           <DialogDescription>{{ $t('auth.signIn.subtitle') }}</DialogDescription>
         </DialogHeader>
 
@@ -398,7 +404,13 @@ const showPassword = ref(false)
       <!-- State 2: Sign In with Email -->
       <template v-if="state === 'sign-in-email'">
         <DialogHeader class="text-center space-y-2">
-          <AppLogo :size="48" class="mx-auto" />
+          <img
+            v-if="portal.logo"
+            :src="portal.logo"
+            :alt="portal.name"
+            class="mx-auto size-12 rounded-xl object-cover"
+          >
+          <AppLogo v-else :size="48" class="mx-auto" />
           <DialogTitle class="font-heading text-xl">{{ $t('auth.signInEmail.title') }}</DialogTitle>
         </DialogHeader>
         <form class="space-y-4 pt-2" @submit.prevent="handleSignIn">
@@ -465,7 +477,13 @@ const showPassword = ref(false)
       <!-- State 3: Sign Up with Email -->
       <template v-if="state === 'sign-up-email'">
         <DialogHeader class="text-center space-y-2">
-          <AppLogo :size="48" class="mx-auto" />
+          <img
+            v-if="portal.logo"
+            :src="portal.logo"
+            :alt="portal.name"
+            class="mx-auto size-12 rounded-xl object-cover"
+          >
+          <AppLogo v-else :size="48" class="mx-auto" />
           <DialogTitle class="font-heading text-xl">{{ $t('auth.signUp.title') }}</DialogTitle>
         </DialogHeader>
         <form class="space-y-4 pt-2" @submit.prevent="handleSignUp">

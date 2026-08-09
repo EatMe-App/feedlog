@@ -68,9 +68,9 @@ defineExpose({ reset })
 </script>
 
 <template>
-  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-2 min-w-0 max-w-full">
     <Transition name="fl-left" mode="out-in" @after-enter="onSearchRevealed">
-      <h2 v-if="!searchOpenDesktop" class="font-heading text-2xl font-bold">
+      <h2 v-if="!searchOpenDesktop" class="font-heading text-xl sm:text-2xl font-bold min-w-0 truncate">
         {{ sortBy === 'top' ? $t('board.topRequests') : $t('board.recentRequests') }}
       </h2>
       <div v-else class="fl-search">
@@ -95,23 +95,23 @@ defineExpose({ reset })
       </div>
     </Transition>
 
-    <div ref="controlsRow" class="fl-rightbar flex items-center relative">
+    <div ref="controlsRow" class="fl-rightbar flex items-center justify-between sm:justify-end w-full sm:w-auto relative min-w-0">
       <Transition name="fl-controls">
-        <div v-if="!searchOpen" class="flex items-center gap-3">
-          <div class="flex bg-border/50 p-1 rounded-lg">
+        <div v-if="!searchOpen" class="flex items-center gap-1.5 sm:gap-3">
+          <div class="flex bg-border/50 p-0.5 sm:p-1 rounded-lg shrink-0">
             <button
-              class="px-4 py-1.5 rounded-[12px] text-sm font-medium transition-colors"
+              class="px-2 sm:px-4 py-1.5 rounded-[10px] sm:rounded-[12px] text-xs sm:text-sm font-medium transition-colors"
               :class="sortBy === 'top'
-                ? 'bg-card text-foreground shadow-sm'
+                ? 'bg-card text-foreground shadow-sm font-bold'
                 : 'text-muted-foreground hover:text-foreground'"
               @click="sortBy = 'top'"
             >
               {{ $t('board.sortTop') }}
             </button>
             <button
-              class="px-4 py-1.5 rounded-[12px] text-sm font-medium transition-colors"
+              class="px-2 sm:px-4 py-1.5 rounded-[10px] sm:rounded-[12px] text-xs sm:text-sm font-medium transition-colors"
               :class="sortBy === 'recent'
-                ? 'bg-card text-foreground shadow-sm'
+                ? 'bg-card text-foreground shadow-sm font-bold'
                 : 'text-muted-foreground hover:text-foreground'"
               @click="sortBy = 'recent'"
             >
@@ -121,7 +121,7 @@ defineExpose({ reset })
           <button
             ref="searchTrigger"
             type="button"
-            class="fl-toolbtn fl-toolbtn--search"
+            class="fl-toolbtn fl-toolbtn--search shrink-0"
             :aria-label="$t('board.search')"
             @click="openSearch"
           >
@@ -133,11 +133,12 @@ defineExpose({ reset })
       <Transition name="fl-newreq">
         <Button
           v-show="!searchOpenMobile"
-          class="h-10 px-4 rounded-lg text-[15px] font-heading font-semibold"
+          class="h-10 w-10 p-0 sm:w-auto sm:px-4 rounded-lg text-xs sm:text-[15px] font-heading font-semibold shrink-0 justify-center"
+          :title="$t('board.newRequest')"
           @click="emit('new-request')"
         >
           <Icon name="lucide:plus" size="18" />
-          {{ $t('board.newRequest') }}
+          <span class="hidden sm:inline">{{ $t('board.newRequest') }}</span>
         </Button>
       </Transition>
 

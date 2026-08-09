@@ -360,18 +360,18 @@ async function handleShare() {
     <!-- Left column: post card + discussion -->
     <div class="flex-1 min-w-0 space-y-6">
       <!-- Post card -->
-      <div class="bg-card border border-border rounded-lg p-6 lg:p-8 shadow-sm">
-        <div class="flex flex-col md:flex-row gap-6">
+      <div class="bg-card border border-border rounded-lg p-4 sm:p-6 lg:p-8 shadow-sm">
+        <div class="flex flex-col md:flex-row gap-4 sm:gap-6">
           <div v-if="!isMerged" class="flex flex-row md:flex-col items-center gap-3 shrink-0">
             <button
-              class="upvote-btn w-14 h-[72px] rounded-md flex flex-col items-center justify-center gap-1 shadow-md border transition-transform hover:scale-105"
+              class="upvote-btn w-12 h-14 sm:w-14 sm:h-[72px] rounded-md flex flex-col items-center justify-center gap-0.5 sm:gap-1 shadow-md border transition-transform hover:scale-105"
               :class="post.hasVoted
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'bg-background text-foreground border-border hover:border-primary hover:text-primary'"
               @click="handleVote"
             >
-              <Icon name="lucide:chevron-up" size="28" />
-              <span class="font-heading font-bold text-lg">{{ post.voteCount }}</span>
+              <Icon name="lucide:chevron-up" size="24" class="sm:size-[28px]" />
+              <span class="font-heading font-bold text-base sm:text-lg">{{ post.voteCount }}</span>
             </button>
             <p class="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center">{{ $t('post.detail.upvotes') }}</p>
           </div>
@@ -392,10 +392,7 @@ async function handleShare() {
             <template v-else>
               <div class="flex items-start gap-3 mb-3">
                 <div class="flex-1 min-w-0 flex items-center gap-2">
-                  <h2 class="font-heading text-2xl font-bold min-w-0 break-words">{{ post.title }}</h2>
-                  <!-- <span v-if="mergedCount > 0" class="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-md shrink-0">
-                    <Icon name="lucide:git-merge" size="12" /> {{ mergedCount }}
-                  </span> -->
+                  <h2 class="font-heading text-xl sm:text-2xl font-bold min-w-0 break-words">{{ post.title }}</h2>
                 </div>
                 <div class="flex items-center gap-2 shrink-0 pt-1">
                   <span class="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
@@ -430,12 +427,12 @@ async function handleShare() {
 
       <!-- Discussion -->
       <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h3 class="font-heading text-lg font-bold flex items-center gap-2">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 class="font-heading text-base sm:text-lg font-bold flex items-center gap-2">
             <Icon name="lucide:message-square" size="20" /> {{ $t('post.detail.discussion', { count: post.commentCount }) }}
           </h3>
-          <div class="flex items-center gap-2 bg-border/20 p-1 rounded-md">
-            <button v-for="s in (['newest', 'oldest', 'top'] as const)" :key="s" class="px-3 py-1 text-[11px] font-medium rounded-md capitalize transition-colors" :class="commentSort === s ? 'bg-card shadow-sm text-foreground font-bold' : 'text-muted-foreground hover:text-foreground'" @click="commentSort = s">{{ $t(`post.detail.sort.${s}`) }}</button>
+          <div class="flex items-center gap-1.5 sm:gap-2 bg-border/20 p-1 rounded-md self-start sm:self-auto max-w-full overflow-x-auto">
+            <button v-for="s in (['newest', 'oldest', 'top'] as const)" :key="s" class="px-2.5 sm:px-3 py-1 text-[11px] font-medium rounded-md capitalize transition-colors shrink-0" :class="commentSort === s ? 'bg-card shadow-sm text-foreground font-bold' : 'text-muted-foreground hover:text-foreground'" @click="commentSort = s">{{ $t(`post.detail.sort.${s}`) }}</button>
           </div>
         </div>
         <!-- Merge banner (inside discussion, per PRD) -->

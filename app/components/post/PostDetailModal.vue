@@ -34,17 +34,17 @@ watch(open, (isOpen) => {
       @open-auto-focus.prevent
       @pointer-down-outside="preventShadcnDialogClose"
       @escape-key-down="preventShadcnDialogClose"
-      class="!max-w-[1100px] h-[90vh] !p-0 !gap-0 overflow-hidden border-border bg-background !rounded-2xl flex flex-col"
+      class="w-full max-w-full sm:max-w-[calc(100vw-1.5rem)] lg:max-w-[1100px] h-[100dvh] sm:h-[85vh] !p-0 !gap-0 overflow-hidden border-none sm:border sm:border-border bg-background rounded-none sm:rounded-2xl flex flex-col"
     >
       <!-- Modal header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-border bg-card shrink-0">
-        <div class="flex items-center gap-3">
-          <AppLogo :size="32" />
-          <DialogTitle class="font-heading text-lg font-bold tracking-tight">
+      <div class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border bg-card shrink-0">
+        <div class="flex items-center gap-3 min-w-0 flex-1 mr-2">
+          <AppLogo :size="32" class="shrink-0" />
+          <DialogTitle class="font-heading text-base sm:text-lg font-bold tracking-tight truncate">
             {{ $t('post.detail.modalTitle') }}
           </DialogTitle>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 shrink-0">
           <NuxtLink
             v-if="slug"
             :to="localePath(`/p/${slug}`)"
@@ -62,7 +62,7 @@ watch(open, (isOpen) => {
 
       <!-- Modal content: scrollable -->
       <div class="overflow-y-auto flex-1">
-        <div class="flex flex-col md:flex-row gap-8 p-4 sm:p-6 lg:p-8">
+        <div class="flex flex-col md:flex-row gap-6 md:gap-8 p-3.5 sm:p-6 lg:p-8">
           <PostDetail
             v-if="slug"
             :slug="slug"

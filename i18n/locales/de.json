@@ -69,7 +69,7 @@
     "comments": "{n} Kommentare",
     "loading": "Wird geladen...",
     "loadMore": "Mehr laden",
-    "poweredBy": "Unterstützt von "
+    "poweredBy": "Powered by "
   },
   "roadmap": {
     "title": "Roadmap",
@@ -315,7 +315,7 @@
       "confirm": "Passwort bestätigen"
     },
     "signIn": {
-      "title": "Bei FeedLog anmelden",
+      "title": "Für {name} Feedback anmelden",
       "subtitle": "Melde dich an, um Feedback einzureichen, abzustimmen und zu kommentieren",
       "google": "Weiter mit Google",
       "github": "Weiter mit GitHub",

@@ -12,7 +12,7 @@
       class="size-8 md:size-10 rounded-lg object-cover shrink-0"
     >
     <AppLogo v-else :size="32" class="md:size-10" />
-    <span class="font-heading text-xl md:text-2xl font-bold tracking-tight truncate">{{ portal.name }}</span>
+    <span class="font-heading text-base sm:text-xl md:text-2xl font-bold tracking-tight truncate">{{ portal.name }}</span>
   </NuxtLink>
 </template>
 

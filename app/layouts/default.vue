@@ -57,12 +57,12 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
     <!-- Top navigation bar -->
     <header class="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-md w-full transition-colors duration-300">
       <!-- Main bar -->
-      <div class="h-14 md:h-20 flex items-center justify-between px-4 md:px-6 lg:px-10">
+      <div class="h-14 md:h-20 flex items-center justify-between px-3 sm:px-6 lg:px-10 max-w-full overflow-hidden">
         <!-- Left: Hamburger (mobile) + Logo + Navigation (desktop) -->
-        <div class="flex items-center gap-3 md:gap-10">
+        <div class="flex items-center gap-2 sm:gap-3 md:gap-10 min-w-0 flex-1 mr-2">
           <!-- Mobile hamburger -->
           <button
-            class="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
+            class="md:hidden w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
             @click="mobileNavOpen = !mobileNavOpen"
           >
             <Icon :name="mobileNavOpen ? 'lucide:x' : 'lucide:menu'" size="20" />
@@ -85,7 +85,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
         </div>
 
         <!-- Right side -->
-        <div class="flex items-center gap-3 md:gap-4 lg:gap-6">
+        <div class="flex items-center gap-1.5 sm:gap-3 md:gap-4 lg:gap-6 shrink-0">
           <ThemeSwitcher />
           <LocaleSwitcher />
 
@@ -106,7 +106,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
           <NuxtLink
             v-if="canEnterDashboard"
             :to="localePath('/dashboard')"
-            class="md:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
+            class="md:hidden w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
           >
             <Icon name="lucide:layout-dashboard" size="20" />
           </NuxtLink>
@@ -115,11 +115,11 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
           <DropdownMenu v-if="user">
             <DropdownMenuTrigger as-child>
               <button class="flex items-center rounded-full border border-border bg-card hover:border-primary transition-colors focus:outline-none p-1">
-                <Avatar class="w-8 h-8">
+                <Avatar class="w-7 h-7 sm:w-8 sm:h-8">
                   <img v-if="user.image && !avatarError" :src="user.image" :alt="user.name" class="aspect-square size-full rounded-full object-cover" referrerpolicy="no-referrer" @error="avatarError = true">
                   <!-- Brand accent (not a neutral gray) so identity chips carry the
                        brand; derived in deriveBrandVars. -->
-                  <AvatarFallback v-else class="bg-accent text-accent-foreground text-sm font-bold">
+                  <AvatarFallback v-else class="bg-accent text-accent-foreground text-xs sm:text-sm font-bold">
                     {{ initials }}
                   </AvatarFallback>
                 </Avatar>
@@ -147,7 +147,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
           <!-- Not logged in: Sign in button -->
           <button
             v-if="!user"
-            class="flex items-center gap-2 font-heading font-semibold text-sm px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
+            class="flex items-center gap-1.5 sm:gap-2 font-heading font-semibold text-xs sm:text-sm px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
             @click="showLoginModal = true"
           >
             <Icon name="lucide:log-in" size="16" />
@@ -181,7 +181,7 @@ watch(() => route.path, () => { mobileNavOpen.value = false })
     <ChangePasswordDialog v-model:open="showChangePassword" />
 
     <!-- Page content (header is position:fixed, so add top padding equal to header height) -->
-    <main class="flex-1 w-full max-w-[1200px] mx-auto flex flex-col md:flex-row gap-8 px-4 md:px-6 lg:px-10 pt-20 md:pt-28 pb-6 md:pb-8">
+    <main class="flex-1 w-full max-w-[1200px] mx-auto flex flex-col md:flex-row gap-8 px-4 md:px-6 lg:px-10 pt-20 md:pt-28 pb-6 md:pb-8 min-w-0">
       <slot />
     </main>
   </div>

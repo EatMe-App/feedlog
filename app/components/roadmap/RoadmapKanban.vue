@@ -32,6 +32,7 @@ const boardStore = useBoardStore()
 await callOnce(() => boardStore.fetchBoards())
 
 const roadmapStatuses = ROADMAP_STATUSES
+const activeMobileStatus = ref<RoadmapStatus>('planned')
 const { t } = useI18n()
 
 // Fetch roadmap data (deep: true to track nested mutations)
@@ -449,17 +450,36 @@ function removeItem(postId: string) {
 </script>
 
 <template>
-  <div class="flex gap-6 h-full">
-    <div
-      v-for="col in columns"
-      :key="col.id"
-      :ref="(el) => setColumnRef(col.id, el)"
-      :data-status="col.id"
-      class="flex-1 flex flex-col min-w-[260px] md:min-w-0 kanban-column transition-all duration-200"
-      :class="{
-        'ring-2 ring-primary/50': dropTargetStatus === col.id,
-      }"
-    >
+  <div class="flex flex-col h-full">
+    <!-- Mobile column switcher tabs -->
+    <div class="md:hidden flex bg-border/40 p-1 rounded-xl mb-4 gap-1 shrink-0">
+      <button
+        v-for="col in columns"
+        :key="col.id"
+        class="flex-1 min-w-0 flex flex-col items-center justify-center py-2 px-1.5 rounded-lg transition-all"
+        :class="activeMobileStatus === col.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'"
+        @click="activeMobileStatus = col.id as RoadmapStatus"
+      >
+        <div class="flex items-center gap-1.5 mb-0.5">
+          <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: `var(${col.cssVar})` }" />
+          <span class="px-1.5 py-0.2 rounded-full bg-muted/80 text-[10px] font-bold tabular-nums">{{ col.total }}</span>
+        </div>
+        <span class="text-[11px] font-bold truncate max-w-full leading-tight">{{ col.label }}</span>
+      </button>
+    </div>
+
+    <div class="flex gap-6 flex-1 min-h-0">
+      <div
+        v-for="col in columns"
+        :key="col.id"
+        :ref="(el) => setColumnRef(col.id, el)"
+        :data-status="col.id"
+        class="flex-1 flex flex-col min-w-0 kanban-column transition-all duration-200"
+        :class="[
+          dropTargetStatus === col.id ? 'ring-2 ring-primary/50' : '',
+          activeMobileStatus === col.id ? 'flex' : 'hidden md:flex',
+        ]"
+      >
       <!-- Column header -->
       <div class="flex items-center justify-between mb-4 px-2">
         <div class="flex items-center gap-2">
@@ -556,6 +576,7 @@ function removeItem(postId: string) {
       </div>
     </div>
   </div>
+</div>
 </template>
 
 <style scoped>

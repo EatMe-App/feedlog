@@ -348,32 +348,32 @@ async function handleVote(post: PostListItem) {
     </div>
 
     <!-- Feedback card list -->
-    <div v-else class="flex flex-col gap-4">
+    <div v-else class="flex flex-col gap-3 sm:gap-4">
       <article
         v-for="p in posts"
         :key="p.id"
-        class="feedback-card flex items-stretch gap-4 bg-card border border-border rounded-lg p-4 cursor-pointer"
+        class="feedback-card flex items-stretch gap-3 sm:gap-4 bg-card border border-border rounded-lg p-3 sm:p-4 cursor-pointer"
         @click="openPostDetail(p)"
       >
         <!-- Upvote button -->
         <button
-          class="upvote-btn w-[56px] h-[64px] shrink-0 rounded-md flex flex-col items-center justify-center gap-1 border focus:outline-none"
+          class="upvote-btn w-12 h-14 sm:w-[56px] sm:h-[64px] shrink-0 rounded-md flex flex-col items-center justify-center gap-0.5 sm:gap-1 border focus:outline-none"
           :class="p.hasVoted
             ? 'bg-primary text-primary-foreground border-primary shadow-sm'
             : 'bg-background text-foreground border-border hover:border-primary hover:text-primary transition-colors'"
           @click.stop="handleVote(p)"
         >
-          <Icon name="lucide:chevron-up" size="24" />
-          <span class="font-heading font-bold text-[15px] leading-none">{{ p.voteCount }}</span>
+          <Icon name="lucide:chevron-up" size="22" class="sm:size-[24px]" />
+          <span class="font-heading font-bold text-sm sm:text-[15px] leading-none">{{ p.voteCount }}</span>
         </button>
 
         <!-- Card content -->
-        <div class="flex-1 flex flex-col justify-center min-w-0 py-1">
+        <div class="flex-1 flex flex-col justify-center min-w-0 py-0.5 sm:py-1">
           <!-- Status badge + Board -->
           <div class="flex items-center gap-2 mb-1">
             <span
               v-if="p.status && p.status !== 'open' && STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG]"
-              class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+              class="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full text-[11px] sm:text-xs font-medium border"
               :style="{
                 color: `var(${STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG].cssVar})`,
                 backgroundColor: `var(${STATUS_CONFIG[p.status as keyof typeof STATUS_CONFIG].cssVar}-bg)`,
@@ -382,35 +382,32 @@ async function handleVote(post: PostListItem) {
             >
               {{ $t(statusLabelKey(p.status)) }}
             </span>
-            <span v-if="p.boardId && boardMap.get(p.boardId)" class="text-xs font-medium text-muted-foreground">
+            <span v-if="p.boardId && boardMap.get(p.boardId)" class="text-[11px] sm:text-xs font-medium text-muted-foreground truncate">
               {{ p.status && p.status !== 'open' ? '•' : '' }} {{ boardMap.get(p.boardId) }}
             </span>
           </div>
 
           <!-- Title -->
-          <div class="flex items-center gap-2 mb-1.5">
-            <h3 class="font-heading text-lg font-bold leading-tight truncate">
+          <div class="flex items-center gap-2 mb-1">
+            <h3 class="font-heading text-base sm:text-lg font-bold leading-tight truncate">
               {{ p.title }}
             </h3>
-            <!-- <span v-if="p.mergedCount > 0" class="inline-flex items-center gap-0.5 text-[10px] font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded shrink-0">
-              <Icon name="lucide:git-merge" size="10" /> {{ p.mergedCount }}
-            </span> -->
           </div>
 
           <!-- Excerpt -->
-          <p class="text-sm text-muted-foreground line-clamp-2 break-all">
+          <p class="text-xs sm:text-sm text-muted-foreground line-clamp-2 break-all">
             {{ p.excerpt }}
           </p>
 
           <!-- Bottom meta -->
-          <div class="flex items-center gap-4 mt-3 text-xs text-muted-foreground font-medium">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2.5 sm:mt-3 text-xs text-muted-foreground font-medium">
             <div class="flex items-center gap-1.5">
               <Icon name="lucide:message-square" size="14" />
               <span>{{ $t('board.comments', { n: p.commentCount }) }}</span>
             </div>
             <div class="flex items-center gap-2">
-              <img v-if="p.author?.image" :src="p.author.image" :alt="p.author.name" class="w-5 h-5 rounded-full object-cover shrink-0" referrerpolicy="no-referrer">
-              <div v-else class="w-5 h-5 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-[9px] shrink-0">
+              <img v-if="p.author?.image" :src="p.author.image" :alt="p.author.name" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover shrink-0" referrerpolicy="no-referrer">
+              <div v-else class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold text-[8px] sm:text-[9px] shrink-0">
                 {{ initials(p.author?.name) }}
               </div>
               <div class="flex items-center gap-1.5">
