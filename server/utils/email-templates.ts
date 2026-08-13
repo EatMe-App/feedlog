@@ -1,6 +1,7 @@
 // Email HTML templates — auto-imported by Nitro.
 // Brand primary color matches public/logo.svg.
 import { STATUS_CONFIG } from '../../shared/types/post'
+import { normalizeBrandHex, pickBrandForegroundHex } from '../../shared/utils/branding'
 
 const BRAND_COLOR = '#C45A46'
 const FONT_STACK = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
@@ -127,30 +128,31 @@ export interface NotificationEmailContent {
 }
 
 const FOOTER_REASON = 'You\'re receiving this because of your activity on this FeedLog board.'
+const ADMIN_FOOTER_REASON = 'You\'re receiving this because you manage this FeedLog board.'
 
 // Gray page → centered FeedLog wordmark → white rounded card → centered footer.
 // No links in the footer; the physical postal address (CAN-SPAM) is a pre-launch
 // item, not fabricated here.
-function notificationShell(cardInner: string, preheader: string): string {
+function notificationShell(cardInner: string, preheader: string, footerReason: string): string {
   return `
 <div style="background: #f6f7fb; padding: 40px 16px; font-family: ${FONT_STACK};">
   <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escapeHtml(preheader)}</div>
   <div style="max-width: 560px; margin: 0 auto;">
     <div style="text-align: center; padding-bottom: 28px;">
-      <span style="font-size: 22px; font-weight: 800; color: ${BRAND_COLOR}; letter-spacing: -0.02em;">FeedLog</span>
+      <span style="font-size: 22px; font-weight: 800; color: {{brand}}; letter-spacing: -0.02em;">FeedLog</span>
     </div>
     <div style="background: #fff; border: 1px solid #eceef3; border-radius: 16px; padding: 40px 36px;">
 ${cardInner}
     </div>
     <div style="text-align: center; padding: 24px 8px 0; color: #9ca3af; font-size: 12px; line-height: 1.6;">
-      <p style="margin: 0;">${FOOTER_REASON}</p>
+      <p style="margin: 0;">${footerReason}</p>
     </div>
   </div>
 </div>`
 }
 
 function pillButton(url: string, label: string): string {
-  return `<div style="text-align: center; margin-top: 32px;"><a href="${url}" style="display: inline-block; padding: 14px 40px; background: ${BRAND_COLOR}; color: #fff; text-decoration: none; border-radius: 999px; font-weight: 700; font-size: 16px;">${label}</a></div>`
+  return `<div style="text-align: center; margin-top: 32px;"><a href="${url}" style="display: inline-block; padding: 14px 40px; background: {{brand}}; color: {{brandFg}}; text-decoration: none; border-radius: 999px; font-weight: 700; font-size: 16px;">${label}</a></div>`
 }
 
 function statusChangeCard(title: string, to: string, note?: string): NotificationEmailContent {
@@ -171,14 +173,14 @@ function statusChangeCard(title: string, to: string, note?: string): Notificatio
   }
 }
 
-function adminReplyCard(title: string, actorName: string, actorImage: string | null | undefined, snippet: string): NotificationEmailContent {
+function personCard(title: string, actorName: string, actorImage: string | null | undefined, snippet: string, buttonLabel: string): string {
   const initial = (actorName || '?').charAt(0).toUpperCase()
   // Only trust an http(s) URL as a src; anything else falls back to the initial avatar.
   const safeImage = actorImage && /^https?:\/\//i.test(actorImage) ? actorImage : null
   const avatar = safeImage
     ? `<img src="${escapeHtml(safeImage)}" width="40" height="40" style="border-radius: 999px; display: block;" alt="">`
-    : `<div style="width: 40px; height: 40px; border-radius: 999px; background: ${BRAND_COLOR}; color: #fff; font-size: 16px; font-weight: 700; text-align: center; line-height: 40px;">${escapeHtml(initial)}</div>`
-  const inner = `
+    : `<div style="width: 40px; height: 40px; border-radius: 999px; background: {{brand}}; color: {{brandFg}}; font-size: 16px; font-weight: 700; text-align: center; line-height: 40px;">${escapeHtml(initial)}</div>`
+  return `
       <p style="margin: 0 0 20px; font-size: 17px; font-weight: 700; color: #111827; line-height: 1.4;">${escapeHtml(title)}</p>
       <table cellpadding="0" cellspacing="0" style="width: 100%;"><tr>
         <td width="48" valign="top">${avatar}</td>
@@ -187,11 +189,30 @@ function adminReplyCard(title: string, actorName: string, actorImage: string | n
           <div style="font-size: 15px; color: #6b7280; line-height: 1.7;">${escapeHtml(snippet)}</div>
         </td>
       </tr></table>
-      ${pillButton('{{postUrl}}', 'View comment')}`
+      ${pillButton('{{postUrl}}', buttonLabel)}`
+}
+
+function adminReplyCard(title: string, actorName: string, actorImage: string | null | undefined, snippet: string): NotificationEmailContent {
   return {
     subject: `New comment for "${title}"`,
-    html: inner,
+    html: personCard(title, actorName, actorImage, snippet, 'View comment'),
     text: `${actorName} commented on "${title}":\n\n${snippet}`,
+  }
+}
+
+function newFeedbackCard(title: string, actorName: string, actorImage: string | null | undefined, snippet: string): NotificationEmailContent {
+  return {
+    subject: `New feedback: "${title}"`,
+    html: personCard(title, actorName, actorImage, snippet, 'View feedback'),
+    text: `${actorName} submitted new feedback, "${title}":\n\n${snippet}`,
+  }
+}
+
+function userCommentCard(title: string, actorName: string, actorImage: string | null | undefined, snippet: string): NotificationEmailContent {
+  return {
+    subject: `New reply on "${title}"`,
+    html: personCard(title, actorName, actorImage, snippet, 'View comment'),
+    text: `${actorName} replied on "${title}":\n\n${snippet}`,
   }
 }
 
@@ -206,10 +227,12 @@ export function renderNotificationEmail(input: {
   snippet?: string
   actorName?: string
   actorImage?: string | null
+  brandColor?: string
 }): NotificationEmailContent | null {
   const title = input.postTitle || 'your post'
   let card: NotificationEmailContent | null = null
   let preheader = ''
+  let footerReason = FOOTER_REASON
 
   switch (input.typeKey) {
     case 'post.status_changed': {
@@ -222,11 +245,24 @@ export function renderNotificationEmail(input: {
       card = adminReplyCard(title, input.actorName ?? 'The team', input.actorImage, input.snippet ?? '')
       preheader = `An official reply on "${title}".`
       break
+    case 'post.created':
+      card = newFeedbackCard(title, input.actorName ?? 'Someone', input.actorImage, input.snippet ?? '')
+      preheader = `New feedback on your board: "${title}".`
+      footerReason = ADMIN_FOOTER_REASON
+      break
+    case 'post.user_commented':
+      card = userCommentCard(title, input.actorName ?? 'Someone', input.actorImage, input.snippet ?? '')
+      preheader = `A new reply on "${title}".`
+      footerReason = ADMIN_FOOTER_REASON
+      break
     default:
       return null
   }
 
-  const html = notificationShell(card.html.replaceAll('{{postUrl}}', input.postUrl), preheader)
-  const text = `${card.text}\n\nView: ${input.postUrl}\n\n—\n${FOOTER_REASON}`
+  const brand = normalizeBrandHex(input.brandColor)
+  const html = notificationShell(card.html.replaceAll('{{postUrl}}', input.postUrl), preheader, footerReason)
+    .replaceAll('{{brand}}', brand)
+    .replaceAll('{{brandFg}}', pickBrandForegroundHex(brand))
+  const text = `${card.text}\n\nView: ${input.postUrl}\n\n—\n${footerReason}`
   return { subject: card.subject, html, text }
 }

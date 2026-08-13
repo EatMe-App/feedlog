@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { asc, eq } from 'drizzle-orm'
+import { getRequestURL } from 'h3'
 import { board, organizationWidget } from '#layers/feedlog/server/db/schemas'
 import { buildWidgetSystemPrompt, parseWidgetAiResponse } from '#layers/feedlog/server/utils/widget-ai'
 import { isActorAdmin } from '#layers/feedlog/shared/utils/notifications'
@@ -143,6 +144,20 @@ export default defineEventHandler(async (event): Promise<WidgetMessageResponse> 
   event.waitUntil(
     generatePostEmbedding(created.id, orgId, created.title, content, created.contentHash),
   )
+
+  if (!isActorAdmin(session, orgId)) {
+    event.waitUntil(
+      emitAdminNotification({
+        orgId,
+        typeKey: 'post.created',
+        postSlug: created.slug,
+        postTitle: created.title,
+        snippet: content,
+        actorId: session.user.id,
+        requestOrigin: getRequestURL(event).origin,
+      }).catch((err: unknown) => console.error('[notifications] widget post created emit failed', err)),
+    )
+  }
 
   return {
     type: 'feedback',

@@ -115,6 +115,13 @@ function initials(name: string | null) {
           <span class="font-heading font-bold" :class="depth ? 'text-xs' : 'text-sm'">
             {{ comment.author?.name ?? $t('common.anonymous') }}
           </span>
+          <span
+            v-if="comment.author?.isAdmin"
+            class="inline-flex items-center shrink-0 rounded-full bg-primary text-primary-foreground font-medium px-2 py-0.5"
+            :class="depth ? 'text-[10px]' : 'text-xs'"
+          >
+            {{ $t('post.comment.adminBadge') }}
+          </span>
           <span v-if="replyToName" class="inline-flex items-center gap-0.5 text-muted-foreground" :class="depth ? 'text-[10px]' : 'text-xs'">
             <Icon name="lucide:corner-down-right" :size="depth ? '10' : '12'" />
             <span class="font-medium">@{{ replyToName }}</span>

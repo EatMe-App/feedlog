@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   const db = useDB()
 
   // Verify post exists, belongs to org, and is not merged.
-  const [p] = await db.select({ id: post.id, mergedTo: post.mergedTo }).from(post)
+  const [p] = await db.select({ id: post.id, mergedTo: post.mergedTo, slug: post.slug, title: post.title }).from(post)
     .where(and(eq(post.id, postId), eq(post.orgId, orgId))).limit(1)
   if (!p) {
     throw createError({ statusCode: 404, message: 'Post not found' })
@@ -73,9 +73,9 @@ export default defineEventHandler(async (event) => {
   }
   await db.update(post).set({ commentCount: sql`${post.commentCount} + 1` }).where(eq(post.id, postId))
 
-  // Best-effort, after the write. Only an admin's top-level comment notifies
-  // (resolveCommentEvents no-ops for replies / non-admins). Author + manual
-  // subscribers always get it; upvoters only when notifyVoters isn't false.
+  // Best-effort, after the write. Subscribers only hear from an admin's top-level
+  // comment (resolveCommentEvents no-ops for replies / non-admins). Author +
+  // manual subscribers always get it; upvoters only when notifyVoters isn't false.
   event.waitUntil(
     emitCommentNotifications({
       orgId,
@@ -89,7 +89,20 @@ export default defineEventHandler(async (event) => {
     }).catch((err: unknown) => console.error('[notifications] comment emit failed', err)),
   )
 
-  // Fetch author info
+  if (!isActorAdmin(session, orgId)) {
+    event.waitUntil(
+      emitAdminNotification({
+        orgId,
+        typeKey: 'post.user_commented',
+        postSlug: p.slug,
+        postTitle: p.title,
+        snippet: body.content,
+        actorId: session.user.id,
+        requestOrigin: getRequestURL(event).origin,
+      }).catch((err: unknown) => console.error('[notifications] comment admin emit failed', err)),
+    )
+  }
+
   const [author] = await db
     .select({ id: user.id, name: user.name, image: user.image })
     .from(user)
@@ -103,7 +116,7 @@ export default defineEventHandler(async (event) => {
     replyCount: created!.replyCount,
     likeCount: created!.likeCount,
     hasLiked: false,
-    author: author ?? { id: session.user.id, name: null, image: null },
+    author: { ...(author ?? { id: session.user.id, name: null, image: null }), isAdmin: isActorAdmin(session, orgId) },
     content: created!.content,
     editedAt: created!.editedAt,
     createdAt: created!.createdAt,

@@ -261,7 +261,7 @@ export const usePostDetailStore = defineStore('postDetail', () => {
   }
 
   async function updateComment(slug: string, commentId: string, content: string) {
-    const res = await useApiFetch<CommentItem>(
+    const res = await useApiFetch<Partial<CommentItem>>(
       `/api/comments/${commentId}`,
       { method: 'PATCH', body: { content } },
     )
@@ -376,19 +376,19 @@ export const usePostDetailStore = defineStore('postDetail', () => {
     return null
   }
 
-  function updateCommentInList(slug: string, commentId: string, updated: CommentItem) {
+  function updateCommentInList(slug: string, commentId: string, updated: Partial<CommentItem>) {
     const postId = posts.value[slug]?.id
     if (!postId) return
     const list = commentsMap.value[postId] ?? []
     for (let i = 0; i < list.length; i++) {
       if (list[i].id === commentId) {
-        list[i] = { ...updated, children: list[i].children }
+        list[i] = { ...list[i], ...updated }
         return
       }
       if (list[i].children) {
         for (let j = 0; j < list[i].children!.length; j++) {
           if (list[i].children![j].id === commentId) {
-            list[i].children![j] = updated
+            list[i].children![j] = { ...list[i].children![j], ...updated }
             return
           }
         }

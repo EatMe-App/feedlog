@@ -16,10 +16,9 @@ export function isActorAdmin(session: OrgListSession, orgId: string): boolean {
   return role === 'owner' || role === 'manager'
 }
 
-// The comment decision table: which event types a new comment fires. Only an
-// admin's top-level comment notifies anyone (official reply → owner + voters).
-// A reply notifies nobody, and neither does an ordinary user's top-level
-// comment — both are deliberate, not gaps.
+// The subscriber-side comment decision table: only an admin's top-level comment
+// notifies subscribers (official reply → owner + voters). A reply or an ordinary
+// user's comment notifies none of them.
 export function resolveCommentEvents(input: { isTopLevel: boolean; authorIsAdmin: boolean }): NotificationTypeKey[] {
   if (!input.isTopLevel) return []
   if (input.authorIsAdmin) return ['post.admin_replied']

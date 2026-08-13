@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm'
 import { useDB } from './db'
 import { post, postSearch, postSubscription, user } from '../db/schemas'
 
-// Shared post creation: slug, excerpt, search row, author subscription and the
-// async embedding. Extracted so the widget's AI extraction path produces posts
+// Shared post creation: slug, excerpt, search row, author subscription.
+// Extracted so the widget's AI extraction path produces posts
 // indistinguishable from ones submitted through POST /api/posts — two code
 // paths writing posts differently is how search or notifications quietly start
 // missing half the rows.

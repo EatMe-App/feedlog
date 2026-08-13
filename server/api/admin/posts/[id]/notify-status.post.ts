@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { and, eq } from 'drizzle-orm'
 import { getRequestURL } from 'h3'
 import { post } from '#layers/feedlog/server/db/schemas'
-import { resolvePostThreadRecipients, resolveOrgSlug, deliverToRecipients } from '#layers/feedlog/server/utils/notifications'
+import { resolvePostThreadRecipients, resolveOrgBranding, deliverToRecipients } from '#layers/feedlog/server/utils/notifications'
 import { POST_STATUSES } from '#layers/feedlog/shared/types/post'
 
 // POST /api/admin/posts/:id/notify-status — mail the post's subscribers that it
@@ -41,12 +41,12 @@ export default defineEventHandler(async (event) => {
     .catch((err: unknown) => console.error('[widget] unread mark failed', err))
 
   // Resolve recipients synchronously so we can return the count; send async.
-  const orgSlug = await resolveOrgSlug(orgId)
+  const { slug: orgSlug, brandColor } = await resolveOrgBranding(orgId)
   const recipients = orgSlug ? await resolvePostThreadRecipients(orgId, id, session.user.id) : []
 
   if (recipients.length > 0) {
     event.waitUntil(
-      deliverToRecipients(orgId, orgSlug, recipients, 'post.status_changed',
+      deliverToRecipients(orgId, orgSlug, brandColor, recipients, 'post.status_changed',
         { to: body.status, note: body.note || undefined }, getRequestURL(event).origin)
         .catch((err: unknown) => console.error('[notifications] status notify failed', err)),
     )

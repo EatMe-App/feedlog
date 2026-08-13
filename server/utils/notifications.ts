@@ -1,22 +1,24 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { useDB } from './db'
 import { sendNotification } from './notification-send'
 import { markPostUnreadForAuthor } from './widget-unread'
 import { resolveCommentEvents } from '../../shared/utils/notifications'
-import { organization, user } from '../db/schemas'
+import { resolveBranding } from '../../shared/utils/branding'
+import { member, organization, user } from '../db/schemas'
 import type { NotificationPayload } from '../db/schemas'
 
 // DB-touching notification emit. Pure who/whether decisions live in
 // shared/utils/notifications.ts; the per-recipient send lives in
 // notification-send.ts. This module answers only WHO.
 //
-//  · Recipients = whoever is subscribed to this post (across the whole merge
-//    family), minus org admins and the acting user. Authorship and votes have
-//    already written subscription rows, so the table IS the audience.
+//  · Subscriber audience = whoever is subscribed to this post (across the whole
+//    merge family), minus org admins and the acting user. Authorship and votes
+//    have already written subscription rows, so the table IS the audience.
 //  · Resolving is one SELECT; sending is a loop the caller owns (inside
 //    waitUntil), so a failure is logged, never thrown.
 
 export type PostThreadType = 'post.status_changed' | 'post.admin_replied'
+export type OrgAdminType = 'post.created' | 'post.user_commented'
 
 export interface CommentEmitInput {
   orgId: string
@@ -66,16 +68,17 @@ export async function resolvePostThreadRecipients(orgId: string, postId: string,
   `) as unknown as RecipientRow[]
 }
 
-export async function resolveOrgSlug(orgId: string): Promise<string> {
+export async function resolveOrgBranding(orgId: string): Promise<{ slug: string; brandColor: string }> {
   const db = useDB()
-  const rows = await db.select({ slug: organization.slug }).from(organization).where(eq(organization.id, orgId)).limit(1)
-  return rows[0]?.slug ?? ''
+  const rows = await db.select({ slug: organization.slug, metadata: organization.metadata }).from(organization).where(eq(organization.id, orgId)).limit(1)
+  return { slug: rows[0]?.slug ?? '', brandColor: resolveBranding(rows[0]?.metadata).primaryColor }
 }
 
 // Mail an already-resolved recipient set. Called inside waitUntil.
 export async function deliverToRecipients(
   orgId: string,
   orgSlug: string,
+  brandColor: string,
   recipients: RecipientRow[],
   typeKey: PostThreadType,
   payload: NotificationPayload,
@@ -85,6 +88,7 @@ export async function deliverToRecipients(
     await sendNotification({
       orgId,
       orgSlug,
+      brandColor,
       recipientEmail: r.email,
       typeKey,
       postSlug: r.post_slug,
@@ -98,7 +102,7 @@ export async function deliverToRecipients(
 // Comment path — resolve and deliver in one go; the caller doesn't need a count.
 async function emitAdminReply(input: CommentEmitInput): Promise<void> {
   const db = useDB()
-  const orgSlug = await resolveOrgSlug(input.orgId)
+  const { slug: orgSlug, brandColor } = await resolveOrgBranding(input.orgId)
   if (!orgSlug) {
     console.error(`[notifications] no org slug, skipping org=${input.orgId}`)
     return
@@ -108,7 +112,7 @@ async function emitAdminReply(input: CommentEmitInput): Promise<void> {
 
   // Actor is the same for every recipient — resolve once for the email.
   const [actor] = await db.select({ name: user.name, image: user.image }).from(user).where(eq(user.id, input.actorId)).limit(1)
-  await deliverToRecipients(input.orgId, orgSlug, recipients, 'post.admin_replied', {
+  await deliverToRecipients(input.orgId, orgSlug, brandColor, recipients, 'post.admin_replied', {
     snippet: input.snippet.slice(0, 280),
     actorName: actor?.name ?? undefined,
     actorImage: actor?.image ?? null,
@@ -126,5 +130,59 @@ export async function emitCommentNotifications(input: CommentEmitInput): Promise
         .catch((err: unknown) => console.error('[widget] unread mark failed', err))
       await emitAdminReply(input)
     }
+  }
+}
+
+export interface AdminEmitInput {
+  orgId: string
+  typeKey: OrgAdminType
+  postSlug: string
+  postTitle: string
+  snippet: string
+  actorId: string
+  requestOrigin?: string
+}
+
+export async function resolveOrgAdminRecipients(orgId: string, actorId: string) {
+  const db = useDB()
+  return await db
+    .select({ userId: member.userId, email: user.email })
+    .from(member)
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(and(
+      eq(member.organizationId, orgId),
+      inArray(member.role, ['owner', 'manager']),
+      ne(member.userId, actorId),
+    ))
+}
+
+export async function emitAdminNotification(input: AdminEmitInput): Promise<void> {
+  const db = useDB()
+  const { slug: orgSlug, brandColor } = await resolveOrgBranding(input.orgId)
+  if (!orgSlug) {
+    console.error(`[notifications] no org slug, skipping org=${input.orgId}`)
+    return
+  }
+  const recipients = await resolveOrgAdminRecipients(input.orgId, input.actorId)
+  if (recipients.length === 0) return
+
+  const [actor] = await db.select({ name: user.name, image: user.image }).from(user).where(eq(user.id, input.actorId)).limit(1)
+  const payload: NotificationPayload = {
+    snippet: input.snippet.slice(0, 280),
+    actorName: actor?.name ?? undefined,
+    actorImage: actor?.image ?? null,
+  }
+  for (const r of recipients) {
+    await sendNotification({
+      orgId: input.orgId,
+      orgSlug,
+      brandColor,
+      recipientEmail: r.email,
+      typeKey: input.typeKey,
+      postSlug: input.postSlug,
+      postTitle: input.postTitle,
+      payload,
+      requestOrigin: input.requestOrigin,
+    })
   }
 }

@@ -2,6 +2,7 @@ export interface CommentAuthor {
   id: string
   name: string | null
   image: string | null
+  isAdmin?: boolean
 }
 
 export interface CommentItem {

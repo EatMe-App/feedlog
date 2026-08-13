@@ -1,5 +1,5 @@
 import { eq, and, desc, asc, sql, isNull, isNotNull, inArray } from 'drizzle-orm'
-import { comment, commentLike, user, post } from '#layers/feedlog/server/db/schemas'
+import { comment, commentLike, user, post, member } from '#layers/feedlog/server/db/schemas'
 
 // GET /api/posts/:postId/comments — Unified comment query (top-level, children, pagination)
 export default defineEventHandler(async (event) => {
@@ -23,6 +23,8 @@ export default defineEventHandler(async (event) => {
   if (!postRow) {
     throw createError({ statusCode: 404, message: 'Post not found' })
   }
+
+  const adminIds = await resolveAdminAuthorIds(orgId)
 
   // Loading child comments for a specific parent
   if (parentId) {
@@ -58,7 +60,7 @@ export default defineEventHandler(async (event) => {
 
     const hasMore = rows.length > limit
     const items = hasMore ? rows.slice(0, limit) : rows
-    const data = await attachLikeStatus(db, items, session?.user.id)
+    const data = await attachLikeStatus(db, items, session?.user.id, adminIds)
 
     const lastItem = items[items.length - 1]
     return {
@@ -156,15 +158,13 @@ export default defineEventHandler(async (event) => {
     }
 
     // Attach like status to children
-    if (session?.user.id) {
-      for (const [, children] of childrenMap) {
-        const enriched = await attachLikeStatus(db, children, session.user.id)
-        children.splice(0, children.length, ...enriched)
-      }
+    for (const [, children] of childrenMap) {
+      const enriched = await attachLikeStatus(db, children, session?.user.id, adminIds)
+      children.splice(0, children.length, ...enriched)
     }
   }
 
-  const topData = await attachLikeStatus(db, topItems, session?.user.id)
+  const topData = await attachLikeStatus(db, topItems, session?.user.id, adminIds)
 
   // Enrich mergedPost entries: fetch post info + sub-post comments
   const mergedPostItems = topItems.filter(t => t.type === 'mergedPost' && t.metadata)
@@ -279,7 +279,7 @@ export default defineEventHandler(async (event) => {
       const allSubComments = groupedSubComments.get(mpId) ?? []
       const hasMoreSub = allSubComments.length > childrenLimit
       const subItems = hasMoreSub ? allSubComments.slice(0, childrenLimit) : allSubComments
-      const subData = await attachLikeStatus(db, subItems, session?.user.id)
+      const subData = await attachLikeStatus(db, subItems, session?.user.id, adminIds)
 
       // Enrich second-level mergedPost sub-comments with post info
       const enrichedSubData = subData.map(c => {
@@ -349,8 +349,16 @@ export default defineEventHandler(async (event) => {
   }
 })
 
+async function resolveAdminAuthorIds(orgId: string): Promise<Set<string>> {
+  const rows = await useDB()
+    .select({ userId: member.userId })
+    .from(member)
+    .where(and(eq(member.organizationId, orgId), inArray(member.role, ['owner', 'manager'])))
+  return new Set(rows.map(r => r.userId))
+}
+
 // Format comment row to API response
-function formatComment(r: any) {
+function formatComment(r: any, adminIds: Set<string>) {
   return {
     id: r.id,
     parentId: r.parentId,
@@ -358,7 +366,7 @@ function formatComment(r: any) {
     replyCount: r.replyCount ?? undefined,
     likeCount: r.likeCount,
     hasLiked: r.hasLiked ?? false,
-    author: { id: r.authorId, name: r.authorName, image: r.authorImage },
+    author: { id: r.authorId, name: r.authorName, image: r.authorImage, isAdmin: adminIds.has(r.authorId) },
     content: r.content,
     type: r.type ?? 'comment',
     editedAt: r.editedAt,
@@ -367,9 +375,9 @@ function formatComment(r: any) {
 }
 
 // Batch attach hasLiked status
-async function attachLikeStatus(db: any, items: any[], userId?: string) {
+async function attachLikeStatus(db: any, items: any[], userId: string | undefined, adminIds: Set<string>) {
   if (!userId || items.length === 0) {
-    return items.map(r => formatComment(r))
+    return items.map(r => formatComment(r, adminIds))
   }
 
   const commentIds = items.map(r => r.id)
@@ -383,7 +391,7 @@ async function attachLikeStatus(db: any, items: any[], userId?: string) {
   const likedSet = new Set(likes.map((l: any) => l.commentId))
 
   return items.map(r => ({
-    ...formatComment(r),
+    ...formatComment(r, adminIds),
     hasLiked: likedSet.has(r.id),
   }))
 }

@@ -199,6 +199,7 @@
       "bodyPlaceholder": "详细描述你的想法……",
       "submitting": "提交中……",
       "submit": "发布反馈",
+      "signInAndSubmit": "登录并发布",
       "dialogTitle": "提交反馈",
       "dialogDescription": "提交新反馈",
       "errors": {
@@ -233,6 +234,9 @@
       "board": "看板",
       "status": "状态",
       "author": "作者",
+      "copyEmail": "复制邮箱",
+      "emailCopied": "邮箱已复制到剪贴板",
+      "emailCopyFailed": "复制邮箱失败",
       "none": "无",
       "shareRequest": "分享反馈",
       "modalTitle": "反馈详情",
@@ -284,7 +288,8 @@
       "deleteDescription": "此操作无法撤销,将永久删除该评论及其所有回复。",
       "notifyUpvoters": "通知点赞者",
       "notifyUpvotersHint": "额外通知点赞过的人。作者和已订阅的人始终会收到。",
-      "emailUpvoters": "邮件通知点赞者"
+      "emailUpvoters": "邮件通知点赞者",
+      "adminBadge": "管理员"
     },
     "statusNotify": {
       "title": "要给点赞者发邮件通知吗？",
@@ -705,7 +710,7 @@
     "seeOthers": "看看其他人提了什么",
     "thisProduct": "这个产品",
     "greeting": "你好,我是反馈助手 —— AI,不是人工客服 👋 说说哪里有问题、或者你希望有什么,我会帮你提交给 {product} 团队。",
-    "placeholder": "描述你的反馈……",
+    "placeholder": "说说遇到的问题,或者你的想法……",
     "send": "发送",
     "thinking": "正在读你的消息……",
     "close": "关闭",
@@ -714,7 +719,7 @@
     "viewAll": "查看全部反馈",
     "noFeedback": "你还没有提交过反馈。",
     "postCount": "{count} 条反馈",
-    "withUpdates": "{count} 条有更新",
+    "withUpdates": "{count} 条更新",
     "viewOnBoard": "在反馈板查看",
     "loading": "加载中……",
     "loginTitle": "登录后提交反馈",

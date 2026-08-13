@@ -11,6 +11,7 @@ import { type NotificationPayload } from '../db/schemas'
 export interface SendNotificationInput {
   orgId: string
   orgSlug: string
+  brandColor: string
   recipientEmail: string
   typeKey: NotificationTypeKey
   postSlug: string
@@ -33,6 +34,7 @@ function buildNotificationEmail(input: SendNotificationInput): SendEmailOptions 
     snippet: input.payload.snippet,
     actorName: input.payload.actorName,
     actorImage: input.payload.actorImage,
+    brandColor: input.brandColor,
   })
   if (!content) return null
   return { to: input.recipientEmail, subject: content.subject, html: content.html, text: content.text }
