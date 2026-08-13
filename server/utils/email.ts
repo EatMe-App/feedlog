@@ -29,7 +29,7 @@ export function resolveEmailProvider(): EmailProvider {
     return providers.get(preferred)!
 
   // 2. Fallback by priority
-  for (const name of ['resend', 'console']) {
+  for (const name of ['resend', 'brevo', 'smtp', 'console']) {
     if (providers.has(name)) return providers.get(name)!
   }
 

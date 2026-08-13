@@ -25,7 +25,7 @@ const hasSupabase = !!(
   (env.SUPABASE_PROJECT_REF || env.SUPABASE_OAUTH_DISCOVERY_URL)
 )
 const hasOAuth = hasGoogle || hasGithub || hasSupabase
-const hasEmailProvider = !!env.RESEND_API_KEY
+const hasEmailProvider = !!(env.RESEND_API_KEY || env.BREVO_API_KEY || env.SMTP_HOST)
 
 function parseBool(v: string | undefined): boolean | undefined {
   if (v === undefined) return undefined
