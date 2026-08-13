@@ -199,6 +199,7 @@
       "bodyPlaceholder": "Beschreiben Sie Ihre Idee oder Ihr Anliegen im Detail...",
       "submitting": "Wird gesendet...",
       "submit": "Feedback absenden",
+      "signInAndSubmit": "Anmelden & absenden",
       "dialogTitle": "Feedback einreichen",
       "dialogDescription": "Neues Feedback einreichen",
       "errors": {
@@ -233,6 +234,9 @@
       "board": "Board",
       "status": "Status",
       "author": "Autor",
+      "copyEmail": "E-Mail kopieren",
+      "emailCopied": "E-Mail in Zwischenablage kopiert",
+      "emailCopyFailed": "E-Mail konnte nicht kopiert werden",
       "none": "Keine",
       "shareRequest": "Vorschlag teilen",
       "modalTitle": "Feedback-Details",
@@ -284,7 +288,8 @@
       "deleteDescription": "Diese Aktion kann nicht rückgängig gemacht werden. Dadurch werden der Kommentar und alle Antworten dauerhaft gelöscht.",
       "notifyUpvoters": "Unterstützer benachrichtigen",
       "notifyUpvotersHint": "Ebenfalls E-Mails an Unterstützer senden. Autor und Abonnenten erhalten immer eine Benachrichtigung.",
-      "emailUpvoters": "Unterstützer per E-Mail benachrichtigen"
+      "emailUpvoters": "Unterstützer per E-Mail benachrichtigen",
+      "adminBadge": "Admin"
     },
     "statusNotify": {
       "title": "Unterstützer per E-Mail benachrichtigen?",
