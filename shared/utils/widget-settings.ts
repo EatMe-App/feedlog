@@ -1,5 +1,9 @@
 import { CONVERSATION_RETENTION_DEFAULT_DAYS } from '../constants/conversation'
 import {
+  WIDGET_LAUNCHER_CONFIG_DEFAULT,
+  type WidgetLauncherConfig,
+} from '../constants/widget-launcher'
+import {
   WIDGET_BUILTIN_RULES,
   WIDGET_BUILTIN_RULE_IDS,
   type WidgetCustomRule,
@@ -14,6 +18,7 @@ export interface WidgetConfigRow {
   disabledBuiltins: string[]
   customRules: WidgetCustomRule[]
   conversationRetentionDays: number
+  launcherConfig: WidgetLauncherConfig
 }
 
 // Both wordings travel to the client: the admin page shows whichever matches
@@ -29,6 +34,7 @@ export interface ResolvedWidgetSettings {
   enabled: boolean
   supportEmail: string | null
   conversationRetentionDays: number
+  launcherConfig: WidgetLauncherConfig
   rules: {
     builtins: ResolvedBuiltinRule[]
     custom: WidgetCustomRule[]
@@ -59,6 +65,7 @@ export function resolveWidgetSettings(row: WidgetConfigRow | undefined | null): 
     enabled,
     supportEmail,
     conversationRetentionDays: row?.conversationRetentionDays ?? CONVERSATION_RETENTION_DEFAULT_DAYS,
+    launcherConfig: { ...WIDGET_LAUNCHER_CONFIG_DEFAULT, ...row?.launcherConfig },
     rules: { builtins, custom: customRules },
     enabledCount: countEnabledRules(disabledBuiltins, customRules),
   }
@@ -66,7 +73,7 @@ export function resolveWidgetSettings(row: WidgetConfigRow | undefined | null): 
 
 // Enabled builtins + enabled custom rules, as English scenario texts for the AI
 // prompt. Empty = no handoff rules, so the AI never redirects to support.
-export function getEnabledRuleScenarios(row: WidgetConfigRow | undefined | null): string[] {
+export function getEnabledRuleScenarios(row: Pick<WidgetConfigRow, 'disabledBuiltins' | 'customRules'> | undefined | null): string[] {
   const disabledBuiltins = row?.disabledBuiltins ?? []
   const customRules = row?.customRules ?? []
   const builtin = WIDGET_BUILTIN_RULES

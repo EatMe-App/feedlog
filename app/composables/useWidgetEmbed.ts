@@ -139,7 +139,7 @@ export function useWidgetEmbed() {
       status.value = 'authenticated'
       // A stored guest token alongside a product identity means this visitor
       // filed something before the product knew who they were. Fold it in, once.
-      if (capturedToken && stored && stored !== capturedToken) void claimGuest(stored)
+      if (capturedToken && stored && stored !== capturedToken) await claimGuest(stored)
       return true
     }
     catch {

@@ -2,6 +2,7 @@
 import { resolveAttachmentUrl } from '#layers/feedlog/app/utils/attachment'
 import { widgetEmbedKey } from '#layers/feedlog/app/composables/useWidgetEmbed'
 import { widgetProtocolKey } from '#layers/feedlog/app/composables/useWidgetProtocol'
+import { widgetResumeSchema, type WidgetChatResume } from '#layers/feedlog/app/composables/useWidgetResume'
 import type { WidgetFeedbackItem } from '#layers/feedlog/server/api/widget/feedback/index.get'
 import type { WidgetConversationItem } from '#layers/feedlog/server/api/widget/conversations/index.get'
 
@@ -25,7 +26,7 @@ provide(widgetProtocolKey, protocol)
 // a widget that flashes white inside a dark app is the reason this isn't
 // negotiated over postMessage after load.
 const themeParam = computed(() => {
-  const raw = route.query.theme
+  const raw = protocol.theme.value ?? route.query.theme
   return raw === 'dark' || raw === 'light' ? raw : 'auto'
 })
 const systemDark = ref(false)
@@ -69,7 +70,42 @@ const view = ref<'conversations' | 'chat' | 'list'>('chat')
 const conversations = ref<WidgetConversationItem[]>([])
 const activeConversationId = ref<string | null>(null)
 const chatKey = ref(0)
+const savedChat = ref<WidgetChatResume | null>(null)
+const restoredChat = ref<WidgetChatResume | null>(null)
+const widgetRoot = ref<HTMLElement | null>(null)
+let scrollTop = 0
 let authed = false
+
+function rememberScroll(event: Event) {
+  const target = event.target
+  if (target instanceof HTMLElement && target.clientHeight > 0) scrollTop = target.scrollTop
+}
+
+protocol.onResume(() => ({
+  owner: embed.user.value?.email ?? null,
+  anonymous: !embed.user.value || embed.user.value.isAnonymous === true,
+  view: view.value,
+  conversationId: activeConversationId.value,
+  chat: savedChat.value ? JSON.parse(JSON.stringify(savedChat.value)) : null,
+  scrollTop,
+}), async (state) => {
+  const parsed = widgetResumeSchema.safeParse(state)
+  if (!parsed.success) return
+  const saved = parsed.data
+  // A guest may claim their own draft on login; a different signed-in account
+  // must never inherit the previous account's conversation or composer.
+  if (!saved.anonymous && saved.owner !== embed.user.value?.email) return
+  activeConversationId.value = saved.view === 'chat'
+    ? (saved.chat?.conversationId ?? saved.conversationId)
+    : saved.conversationId
+  restoredChat.value = saved.chat
+  savedChat.value = saved.chat
+  view.value = saved.view
+  await nextTick()
+  await document.fonts.ready
+  const body = widgetRoot.value?.querySelector<HTMLElement>('.overflow-y-auto')
+  if (body && saved.view !== 'chat') body.scrollTop = saved.scrollTop
+})
 
 function panelVisible() {
   return document.body.getBoundingClientRect().height > 0
@@ -244,8 +280,7 @@ function watchPanelVisibility() {
     const now = (entry?.contentRect.height ?? 0) > 0
     if (now === shown) return
     shown = now
-    if (shown) void settleView()
-    else resetToRoot()
+    if (shown) void Promise.all([loadConversations(), loadUnread(), loadFeedback()])
   })
   panelObserver.observe(document.documentElement)
 }
@@ -254,7 +289,7 @@ function onFirstRender() {
   probeArmed.value = false
   if (!authed) return
   watchPanelVisibility()
-  void settleView()
+  void Promise.all([loadConversations(), loadUnread(), loadFeedback()])
 }
 
 // A guest who just sent their first message now has an identity, so the lists
@@ -314,11 +349,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative h-dvh overflow-hidden flex flex-col bg-background text-foreground" @wheel="containWheel">
+  <div ref="widgetRoot" class="relative h-dvh overflow-hidden flex flex-col bg-background text-foreground" @wheel="containWheel" @scroll.capture="rememberScroll">
     <span v-if="probeArmed" class="render-probe" aria-hidden="true" @animationstart="onFirstRender" />
 
     <!-- Header -->
-    <header class="h-16 px-4 border-b border-border bg-card flex items-center gap-2.5 shrink-0">
+    <header class="min-h-16 px-4 pt-[env(safe-area-inset-top)] border-b border-border bg-card flex items-center gap-2.5 shrink-0">
       <button
         v-if="view !== 'conversations'"
         class="w-7 h-7 shrink-0 hover:opacity-70 transition-opacity flex items-center justify-center text-primary"
@@ -404,15 +439,23 @@ onUnmounted(() => {
         :key="chatKey"
         :product-name="productName"
         :open-id="activeConversationId"
+        :resume-state="restoredChat"
+        @state-change="savedChat = $event"
         @auth-required="onAuthRequired"
         @filed="onFiled"
         @replied="onReplied"
       />
     </KeepAlive>
 
-    <p v-if="status !== 'loading'" class="py-1.5 bg-card text-center text-[10.5px] text-muted-foreground shrink-0">
+    <a
+      v-if="status !== 'loading'"
+      href="https://feedlog.ai"
+      target="_blank"
+      rel="noopener"
+      class="block pt-1.5 pb-[max(6px,env(safe-area-inset-bottom))] bg-card text-center text-[10.5px] text-muted-foreground shrink-0 hover:text-foreground transition-colors"
+    >
       {{ t('board.poweredBy') }}FeedLog
-    </p>
+    </a>
   </div>
 </template>
 

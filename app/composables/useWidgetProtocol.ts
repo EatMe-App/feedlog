@@ -3,12 +3,15 @@ import { pageContext, type PageContext } from '#layers/feedlog/shared/agent/cont
 
 const PROTOCOL_VERSION = 1
 
-export type WidgetOutboundType = 'ready' | 'auth-requested' | 'unread' | 'navigate' | 'close-request' | 'page-context-request'
+export type WidgetOutboundType = 'ready' | 'auth-requested' | 'unread' | 'navigate' | 'close-request' | 'page-context-request' | 'resume-state'
 
 export function useWidgetProtocol() {
   const route = useRoute()
   const embedded = ref(false)
   const supportsPageContext = ref(false)
+  const theme = ref<'light' | 'dark' | 'auto' | undefined>()
+  let captureState: (() => unknown) | undefined
+  let restoreState: ((state: unknown) => void) | undefined
 
   // targetOrigin must never be '*', so the SDK hands us the host origin on the
   // embed URL. We use it verbatim: deriving it here would break Firefox, which
@@ -35,8 +38,18 @@ export function useWidgetProtocol() {
   function receiveInit(event: MessageEvent) {
     if (!embedded.value || !parentOrigin.value) return
     if (event.source !== window.parent || event.origin !== parentOrigin.value) return
-    if (event.data?.v !== PROTOCOL_VERSION || event.data.type !== 'init') return
-    supportsPageContext.value = event.data.payload?.capabilities?.pageContext === true
+    if (event.data?.v !== PROTOCOL_VERSION) return
+    const { type, payload } = event.data
+    if (type === 'init') {
+      supportsPageContext.value = payload?.capabilities?.pageContext === true
+      if (payload?.resumeState !== undefined) restoreState?.(payload.resumeState)
+    }
+    else if (type === 'resume-state-request' && typeof payload?.requestId === 'string' && captureState) {
+      send('resume-state', { requestId: payload.requestId, state: captureState() })
+    }
+    else if (type === 'set-theme' && ['light', 'dark', 'auto'].includes(payload?.theme)) {
+      theme.value = payload.theme
+    }
   }
 
   function init() {
@@ -71,11 +84,16 @@ export function useWidgetProtocol() {
 
   return {
     embedded,
+    theme,
     parentOrigin,
     init,
     send,
     requestPageContext,
-    ready: () => send('ready'),
+    ready: () => send('ready', { capabilities: { resumeState: !!captureState, theme: true } }),
+    onResume: (capture: () => unknown, restore: (state: unknown) => void) => {
+      captureState = capture
+      restoreState = restore
+    },
     requestAuth: (reason: 'user' | 'expired') => send('auth-requested', { reason }),
     reportUnread: (count: number) => send('unread', { count }),
     navigateToFeedback: (slug: string) => {

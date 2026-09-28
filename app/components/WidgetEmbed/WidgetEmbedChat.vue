@@ -4,12 +4,13 @@ import { readAgentEvents } from '#layers/feedlog/shared/agent/sse'
 import { resolveAttachmentUrl } from '#layers/feedlog/app/utils/attachment'
 import { widgetEmbedKey } from '#layers/feedlog/app/composables/useWidgetEmbed'
 import { widgetProtocolKey } from '#layers/feedlog/app/composables/useWidgetProtocol'
+import type { WidgetChatResume } from '#layers/feedlog/app/composables/useWidgetResume'
 
 
 const props = defineProps<{
-  productName: string; openId: string | null
+  productName: string; openId: string | null; resumeState?: WidgetChatResume | null
 }>()
-const emit = defineEmits<{ authRequired: []; filed: []; replied: [id: string, lastSeq: number]; started: [id: string]; busy: [value: boolean] }>()
+const emit = defineEmits<{ authRequired: []; filed: []; replied: [id: string, lastSeq: number]; started: [id: string]; busy: [value: boolean]; stateChange: [state: WidgetChatResume] }>()
 const { t } = useI18n()
 const { user, widgetFetch, widgetRequest, ensureIdentity } = inject(widgetEmbedKey)!
 const protocol = inject(widgetProtocolKey, null)
@@ -54,6 +55,52 @@ const uploading = computed(() => pendingUploads.value > 0)
 watch(() => busy.value || uploading.value || loadingThread.value, value => emit('busy', value), { immediate: true })
 const uploadError = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
+const articleScrollTop = ref(0)
+let scrollTop = 0
+
+function reportState() {
+  emit('stateChange', {
+    conversationId: conversationId.value,
+    draft: draft.value,
+    attachments: attachments.value.map(file => ({ ...file })),
+    pending: pending.value,
+    articleSlug: articleSlug.value,
+    articleScrollTop: articleScrollTop.value,
+    firstSeq: items.value.find(item => item.seq > 0)?.seq ?? null,
+    scrollTop,
+  })
+}
+function rememberScroll() {
+  if (bodyEl.value?.clientHeight) scrollTop = bodyEl.value.scrollTop
+  reportState()
+}
+watch([draft, attachments, conversationId, pending, articleSlug, articleScrollTop, items], reportState, { deep: true })
+
+async function restoreState(state: WidgetChatResume) {
+  const current = version + 1
+  await openConversation(state.conversationId)
+  if (current !== version) return
+  // Restore the loaded history range before applying its scroll offset.
+  while (state.firstSeq && nextBeforeSeq.value && (items.value[0]?.seq ?? 0) > state.firstSeq) {
+    try { await loadHistory(true) } catch { break }
+    if (current !== version) return
+  }
+  draft.value = state.draft
+  attachments.value = state.attachments.map(file => ({ ...file }))
+  pending.value = state.pending
+  const request = pending.value
+  if (request?.action === 'send' && items.value.some(item => item.id === request.message.id)) confirmInput(request)
+  savePending()
+  articleScrollTop.value = state.articleScrollTop
+  articleSlug.value = state.articleSlug
+  await nextTick()
+  await document.fonts.ready
+  if (current !== version) return
+  scrollTop = state.scrollTop
+  if (bodyEl.value) bodyEl.value.scrollTop = scrollTop
+  reportState()
+}
+watch(() => props.resumeState, state => { if (state) void restoreState(state) })
 
 function onFilePicked(e: Event) {
   const input = e.target as HTMLInputElement
@@ -253,15 +300,16 @@ async function openConversation(id: string | null) {
 }
 watch(() => props.openId, id => { if (id !== conversationId.value) void openConversation(id) })
 onMounted(async () => {
+  if (props.resumeState) { await restoreState(props.resumeState); return }
   let saved: { owner: string; conversationId: string; pending: ChatInput } | null = null
   try { saved = JSON.parse(sessionStorage.getItem(resumeKey) ?? 'null') } catch { /* Ignore an incomplete local draft. */ }
-  if (saved?.owner === user.value?.id && !props.openId) {
-    await openConversation(saved!.conversationId)
-    pending.value = saved!.pending
+  if (saved && saved.owner === user.value?.id && !props.openId) {
+    await openConversation(saved.conversationId)
+    pending.value = saved.pending
     failure.value = t('widget.sendFailed')
-    if (saved!.pending.action === 'send') {
-      const message = saved!.pending.message
-      if (items.value.some(item => item.id === message.id)) confirmInput(saved!.pending)
+    if (saved.pending.action === 'send') {
+      const message = saved.pending.message
+      if (items.value.some(item => item.id === message.id)) confirmInput(saved.pending)
       else {
         draft.value = message.content.parts.filter(part => part.type === 'text').map(part => part.text).join('\n')
         attachments.value = message.content.parts.filter(part => part.type === 'image').map(part => ({ key: part.storage_key, name: part.storage_key }))
@@ -277,6 +325,7 @@ function openFeedback(slug: string) {
   protocol!.navigateToFeedback(slug)
 }
 function openArticle(slug: string) {
+  articleScrollTop.value = 0
   articleSlug.value = slug
 }
 async function closeArticle() {
@@ -287,8 +336,8 @@ async function closeArticle() {
 </script>
 
 <template>
-  <WidgetEmbedArticle v-if="articleSlug" :slug="articleSlug" :product-name="productName" @close="closeArticle" @article="articleSlug = $event" />
-  <div v-show="!articleSlug" ref="bodyEl" class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-background p-3.5 space-y-2.5 [overflow-wrap:anywhere]">
+  <WidgetEmbedArticle v-if="articleSlug" :slug="articleSlug" :product-name="productName" :initial-scroll-top="articleScrollTop" @close="closeArticle" @article="openArticle" @scroll="articleScrollTop = $event" />
+  <div v-show="!articleSlug" ref="bodyEl" class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-background p-3.5 space-y-2.5 [overflow-wrap:anywhere]" @scroll="rememberScroll">
     <div v-if="loadingThread" class="grid place-items-center p-4"><Icon name="lucide:loader-2" size="20" class="animate-spin" /></div>
     <button v-if="nextBeforeSeq" class="block mx-auto text-xs text-primary" @click="loadHistory(true)">{{ t('widget.earlierMessages') }}</button>
     <div v-if="!items.length && !loadingThread" class="max-w-[88%] rounded-lg border bg-card px-3 py-2.5 text-[13.5px]">{{ t('widget.greeting', { product: productName }) }}</div>

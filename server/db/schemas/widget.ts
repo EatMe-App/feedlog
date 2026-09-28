@@ -4,6 +4,7 @@ import { uuidv7 } from 'uuidv7'
 import { organization } from './auth'
 import { CONVERSATION_RETENTION_DEFAULT_DAYS } from '../../../shared/constants/conversation'
 import type { WidgetCustomRule } from '../../../shared/constants/widget-rules'
+import { WIDGET_LAUNCHER_CONFIG_DEFAULT, type WidgetLauncherConfig } from '../../../shared/constants/widget-launcher'
 
 // One row per org, created lazily on first save (no row = all defaults). Writes
 // go through a validating server endpoint, never a client-side metadata write.
@@ -14,6 +15,7 @@ export const organizationWidget = pgTable('organization_widget', {
   disabledBuiltins: jsonb('disabled_builtins').$type<string[]>().notNull().default([]),
   customRules: jsonb('custom_rules').$type<WidgetCustomRule[]>().notNull().default([]),
   conversationRetentionDays: integer('conversation_retention_days').notNull().default(CONVERSATION_RETENTION_DEFAULT_DAYS),
+  launcherConfig: jsonb('launcher_config').$type<WidgetLauncherConfig>().notNull().default(WIDGET_LAUNCHER_CONFIG_DEFAULT),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 })
