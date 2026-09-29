@@ -31,6 +31,9 @@ function buildNotificationEmail(input: SendNotificationInput): SendEmailOptions 
     typeKey: input.typeKey,
     postTitle: input.postTitle,
     postUrl,
+    preferencesUrl: input.typeKey === 'post.created' || input.typeKey === 'post.user_commented'
+      ? buildPostLink(input.orgSlug, '/dashboard/settings/personal', input.requestOrigin)
+      : undefined,
     to: input.payload.to,
     note: input.payload.note,
     snippet: input.payload.snippet,

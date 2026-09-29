@@ -482,8 +482,9 @@
       "srTitle": "导航",
       "srDescription": "控制台导航菜单",
       "main": "主要",
-      "settings": "设置",
-      "developer": "开发者"
+      "settings": "工作区设置",
+      "developer": "开发者",
+      "organizationSettings": "组织设置"
     },
     "roadmap": {
       "title": "路线图",
@@ -818,6 +819,26 @@
       "previewReset": "重置预览",
       "previewHint": "拖动或点击，体验效果。",
       "customEntryHint": "通过自己的按钮打开反馈。"
+    },
+    "personal": {
+      "title": "个人设置",
+      "subtitle": "仅影响你在「{name}」中的使用偏好",
+      "scope": "仅影响你在当前工作区的使用偏好",
+      "notifications": "通知",
+      "notificationsDesc": "选择你希望收到的邮件提醒。",
+      "feedbackEmail": "团队反馈邮件提醒",
+      "feedbackEmailDesc": "接收新反馈、评论和回复的邮件提醒。",
+      "email": "接收邮箱：",
+      "onlyMe": "仅影响你在当前工作区的邮件提醒。",
+      "contributor": "你当前的角色不接收团队反馈邮件。此设置会在角色允许接收时生效。",
+      "essentialEmails": "登录验证、密码重置等必要邮件不受影响。",
+      "saved": "已保存",
+      "retry": "重试",
+      "loadError": "无法读取个人设置，请重试。",
+      "saveError": "保存失败，修改尚未保存，请重试。",
+      "unknown": "无法确认是否已保存，请重新读取设置后再操作。",
+      "signInPrompt": "登录后即可管理你在当前工作区的邮件提醒。",
+      "membersOnly": "个人设置仅对当前工作区的成员开放。"
     }
   },
   "seo": {

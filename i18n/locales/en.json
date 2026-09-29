@@ -482,8 +482,9 @@
       "srTitle": "Navigation",
       "srDescription": "Dashboard navigation menu",
       "main": "Main",
-      "settings": "Settings",
-      "developer": "Developer"
+      "settings": "Workspace settings",
+      "developer": "Developer",
+      "organizationSettings": "Organization settings"
     },
     "roadmap": {
       "title": "Roadmap",
@@ -818,6 +819,26 @@
       "previewReset": "Reset preview",
       "previewHint": "Drag or click to try it.",
       "customEntryHint": "Connect your own button to open feedback."
+    },
+    "personal": {
+      "title": "Personal settings",
+      "subtitle": "Your preferences in {name}",
+      "scope": "Preferences for your account in this workspace",
+      "notifications": "Notifications",
+      "notificationsDesc": "Choose the email reminders you receive.",
+      "feedbackEmail": "Team feedback emails",
+      "feedbackEmailDesc": "New feedback, comments, and replies.",
+      "email": "Sent to",
+      "onlyMe": "Only affects your notifications in this workspace.",
+      "contributor": "Your current role does not receive team feedback emails. This preference applies when your role allows them.",
+      "essentialEmails": "Sign-in, password reset, and other essential emails stay enabled.",
+      "saved": "Saved",
+      "retry": "Retry",
+      "loadError": "Could not load your preferences. Please retry.",
+      "saveError": "Could not save your changes. Please try again.",
+      "unknown": "Could not confirm whether your change was saved. Reload your preferences before trying again.",
+      "signInPrompt": "Sign in to manage your email reminders for this workspace.",
+      "membersOnly": "Personal settings are available to members of this workspace."
     }
   },
   "seo": {

@@ -54,7 +54,11 @@ const route = useRoute()
 watch(() => route.path, () => { mobileMenuOpen.value = false })
 
 const { t } = useI18n()
+const config = useRuntimeConfig()
+const settingsTitle = computed(() => t(config.public.rootDomain ? 'dashboard.nav.organizationSettings' : 'dashboard.nav.settings'))
+const isPersonalSettings = computed(() => route.path === localePath('/dashboard/settings/personal'))
 const navTitle = computed(() => {
+  if (isPersonalSettings.value) return t('settings.personal.title')
   const match = [...mainNav.value, ...settingsNav.value, ...developerNav.value]
     .filter((item) => {
       const to = localePath(item.to)
@@ -124,7 +128,7 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
             </div>
           </div>
           <div>
-            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.settings') }}</p>
+            <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ settingsTitle }}</p>
             <div class="space-y-1">
               <NuxtLink
                 v-for="item in settingsNav"
@@ -176,7 +180,7 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
                     {{ initials }}
                   </AvatarFallback>
                 </Avatar>
-                <div class="flex-1 text-left">
+                <div class="flex-1 min-w-0 text-left">
                   <p class="text-xs font-bold truncate">{{ user?.name }}</p>
                   <p class="text-[10px] text-muted-foreground truncate">{{ user?.email }}</p>
                 </div>
@@ -191,6 +195,12 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem as-child>
+                <NuxtLink :to="localePath('/dashboard/settings/personal')" :aria-current="isPersonalSettings ? 'page' : undefined" :class="{ 'text-primary': isPersonalSettings }">
+                  <Icon name="lucide:sliders-horizontal" size="16" class="mr-2" />
+                  {{ $t('settings.personal.title') }}
+                </NuxtLink>
+              </DropdownMenuItem>
               <DropdownMenuItem @click="onEditProfile">
                 <Icon name="lucide:user-round-pen" size="16" class="mr-2" />
                 {{ $t('nav.editProfile') }}
@@ -244,7 +254,7 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
 
         <!-- Settings -->
         <div>
-          <p class="hidden min-[1360px]:block px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ $t('dashboard.nav.settings') }}</p>
+          <p class="hidden min-[1360px]:block px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{{ settingsTitle }}</p>
           <div class="space-y-1">
             <NuxtLink
               v-for="item in settingsNav"
@@ -300,7 +310,7 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
                   {{ initials }}
                 </AvatarFallback>
               </Avatar>
-              <div class="hidden min-[1360px]:block flex-1 text-left">
+              <div class="hidden min-[1360px]:block flex-1 min-w-0 text-left">
                 <p class="text-xs font-bold truncate">{{ user?.name }}</p>
                 <p class="text-[10px] text-muted-foreground truncate">{{ user?.email }}</p>
               </div>
@@ -314,6 +324,12 @@ const developerOpen = ref(developerNav.value.some(item => route.path.startsWith(
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem as-child>
+              <NuxtLink :to="localePath('/dashboard/settings/personal')" :aria-current="isPersonalSettings ? 'page' : undefined" :class="{ 'text-primary': isPersonalSettings }">
+                <Icon name="lucide:sliders-horizontal" size="16" class="mr-2" />
+                {{ $t('settings.personal.title') }}
+              </NuxtLink>
+            </DropdownMenuItem>
             <DropdownMenuItem @click="onEditProfile">
               <Icon name="lucide:user-round-pen" size="16" class="mr-2" />
               {{ $t('nav.editProfile') }}

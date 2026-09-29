@@ -113,6 +113,13 @@
       "when": 1790591241231,
       "tag": "0015_widget_launcher_config",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790663038693,
+      "tag": "0016_member_preferences",
+      "breakpoints": true
     }
   ]
 }

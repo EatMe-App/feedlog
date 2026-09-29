@@ -28,6 +28,7 @@ export {
   postSubscription,
 } from './notifications'
 export type { NotificationPayload } from './notifications'
+export { memberPreference } from './member-preferences'
 export {
   organizationWidget,
   organizationWidgetRelations,

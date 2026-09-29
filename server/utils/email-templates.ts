@@ -131,9 +131,7 @@ const FOOTER_REASON = 'You\'re receiving this because of your activity on this F
 const ADMIN_FOOTER_REASON = 'You\'re receiving this because you manage this FeedLog board.'
 
 // Gray page → centered FeedLog wordmark → white rounded card → centered footer.
-// No links in the footer; the physical postal address (CAN-SPAM) is a pre-launch
-// item, not fabricated here.
-function notificationShell(cardInner: string, preheader: string, footerReason: string): string {
+function notificationShell(cardInner: string, preheader: string, footerReason: string, preferencesUrl?: string): string {
   return `
 <div style="background: #f6f7fb; padding: 40px 16px; font-family: ${FONT_STACK};">
   <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${escapeHtml(preheader)}</div>
@@ -146,6 +144,7 @@ ${cardInner}
     </div>
     <div style="text-align: center; padding: 24px 8px 0; color: #9ca3af; font-size: 12px; line-height: 1.6;">
       <p style="margin: 0;">${footerReason}</p>
+      ${preferencesUrl ? `<p style="margin: 8px 0 0;"><a href="${escapeHtml(preferencesUrl)}" style="color: #6b7280; text-decoration: underline;">Manage email notifications</a></p>` : ''}
     </div>
   </div>
 </div>`
@@ -222,6 +221,7 @@ export function renderNotificationEmail(input: {
   typeKey: string
   postTitle?: string
   postUrl: string
+  preferencesUrl?: string
   to?: string
   note?: string
   snippet?: string
@@ -260,9 +260,11 @@ export function renderNotificationEmail(input: {
   }
 
   const brand = normalizeBrandHex(input.brandColor)
-  const html = notificationShell(card.html.replaceAll('{{postUrl}}', input.postUrl), preheader, footerReason)
+  const preferencesUrl = input.typeKey === 'post.created' || input.typeKey === 'post.user_commented'
+    ? input.preferencesUrl : undefined
+  const html = notificationShell(card.html.replaceAll('{{postUrl}}', escapeHtml(input.postUrl)), preheader, footerReason, preferencesUrl)
     .replaceAll('{{brand}}', brand)
     .replaceAll('{{brandFg}}', pickBrandForegroundHex(brand))
-  const text = `${card.text}\n\nView: ${input.postUrl}\n\n—\n${footerReason}`
+  const text = `${card.text}\n\nView: ${input.postUrl}\n\n—\n${footerReason}${preferencesUrl ? `\nManage email notifications: ${preferencesUrl}` : ''}`
   return { subject: card.subject, html, text }
 }

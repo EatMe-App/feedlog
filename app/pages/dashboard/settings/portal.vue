@@ -118,7 +118,7 @@ async function save() {
     </header>
 
     <div class="flex-1 overflow-y-auto">
-      <div class="max-w-4xl mx-auto px-6 py-8 space-y-6">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         <template v-if="loading">
           <p class="text-sm text-muted-foreground">{{ $t('settings.loading') }}</p>
         </template>
