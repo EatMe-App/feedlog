@@ -817,7 +817,7 @@
       "previewCloseLauncher": "关闭悬浮入口",
       "previewClosePanel": "关闭反馈",
       "previewReset": "重置预览",
-      "previewHint": "拖动或点击，体验效果。",
+      "previewHint": "预览操作不会修改设置。",
       "customEntryHint": "通过自己的按钮打开反馈。"
     },
     "personal": {

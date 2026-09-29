@@ -311,6 +311,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
                 </div>
               </fieldset>
               <WidgetLauncherPreview
+                class="border-t border-border pt-6 lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0"
                 :alignment="alignDraft"
                 :bottom-offset="offsetDraft.bottom"
                 :side-offset="offsetDraft.side"

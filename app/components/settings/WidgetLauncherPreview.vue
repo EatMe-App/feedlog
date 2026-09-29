@@ -138,7 +138,7 @@ function closePanel() {
     data-widget-preview
   >
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <p class="text-xs font-semibold">
+      <p class="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
         {{ $t('settings.widget.previewTitle') }}
       </p>
       <div class="inline-flex rounded-md border border-border bg-background p-0.5">
@@ -343,15 +343,22 @@ function closePanel() {
         </div>
       </div>
     </div>
-    <div class="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-      <span role="status">{{ footerHint }}</span><button
-        ref="resetButton"
-        type="button"
-        class="h-8 px-2 shrink-0 hover:bg-secondary rounded-md"
-        @click="reset"
+    <div class="text-center text-[11px] leading-5 text-muted-foreground">
+      <span role="status">{{ footerHint }}</span>
+      <Button
+        variant="link"
+        size="xs"
+        class="ml-2 align-baseline text-[11px] font-normal text-muted-foreground underline hover:text-foreground"
+        as-child
       >
-        {{ $t('settings.widget.previewReset') }}
-      </button>
+        <button
+          ref="resetButton"
+          type="button"
+          @click="reset"
+        >
+          {{ $t('settings.widget.previewReset') }}
+        </button>
+      </Button>
     </div>
   </div>
 </template>

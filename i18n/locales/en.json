@@ -817,7 +817,7 @@
       "previewCloseLauncher": "Close launcher",
       "previewClosePanel": "Close feedback",
       "previewReset": "Reset preview",
-      "previewHint": "Drag or click to try it.",
+      "previewHint": "Preview interactions won’t change your settings.",
       "customEntryHint": "Connect your own button to open feedback."
     },
     "personal": {
