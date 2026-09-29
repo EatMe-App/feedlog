@@ -1,6 +1,8 @@
 import { z } from 'zod/v4'
 import { HELP_ARTICLE_STATUSES, HELP_COLLECTION_ICONS } from '../constants/help'
 
+const helpArticleContentSchema = z.string().refine(content => content.trim().length > 0, 'Content is required')
+
 export const createHelpCollectionSchema = z.object({
   name: z.string().trim().min(1, 'Give the collection a name').max(100, 'Name must be 100 characters or less'),
   description: z.string().trim().max(200, 'Description must be 200 characters or less').nullable().optional(),
@@ -23,7 +25,7 @@ export const createHelpArticleSchema = z.object({
   collectionId: z.uuid(),
   title: z.string().trim().min(1, 'Title is required').max(200, 'Title must be 200 characters or less'),
   description: z.string().trim().max(300, 'Description must be 300 characters or less').nullable().optional(),
-  content: z.string().default(''),
+  content: helpArticleContentSchema,
   publish: z.boolean().default(false),
   aiEnabled: z.boolean().default(true),
 })
@@ -32,7 +34,7 @@ export const updateHelpArticleSchema = z.object({
   collectionId: z.uuid().optional(),
   title: z.string().trim().min(1, 'Title is required').max(200, 'Title must be 200 characters or less').optional(),
   description: z.string().trim().max(300, 'Description must be 300 characters or less').nullable().optional(),
-  content: z.string().optional(),
+  content: helpArticleContentSchema.optional(),
   status: z.enum(HELP_ARTICLE_STATUSES).optional(),
   aiEnabled: z.boolean().optional(),
 })

@@ -134,12 +134,20 @@ async function create(publish: boolean) {
 }
 
 async function saveDraft() {
+  if (!form.content.trim()) {
+    toast.error(t('help.admin.editor.contentRequired'))
+    return
+  }
   if (isNew.value) return create(false)
   if (await patch(contentBody())) toast.success(t('help.admin.editor.saved'))
 }
 
 async function togglePublish() {
   if (article.value?.status !== 'published') {
+    if (!form.content.trim()) {
+      toast.error(t('help.admin.editor.contentRequired'))
+      return
+    }
     const ok = await confirm({
       title: t('help.admin.publishTitle'),
       confirmText: t('help.admin.publish'),

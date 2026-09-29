@@ -66,6 +66,9 @@ export default defineEventHandler(async (event) => {
     if (!title.trim()) {
       throw createError({ statusCode: 400, message: 'Title is required to publish' })
     }
+    if (!content.trim()) {
+      throw createError({ statusCode: 400, message: 'Content is required to publish' })
+    }
     updates.status = 'published'
     if (!existing.publishedAt) updates.publishedAt = new Date()
   }
