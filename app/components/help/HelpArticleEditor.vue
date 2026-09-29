@@ -134,6 +134,10 @@ async function create(publish: boolean) {
 }
 
 async function saveDraft() {
+  if (!form.title.trim()) {
+    toast.error(t('help.admin.editor.titleRequired'))
+    return
+  }
   if (!form.content.trim()) {
     toast.error(t('help.admin.editor.contentRequired'))
     return
@@ -143,6 +147,10 @@ async function saveDraft() {
 }
 
 async function togglePublish() {
+  if (!form.title.trim()) {
+    toast.error(t('help.admin.editor.titleRequired'))
+    return
+  }
   if (article.value?.status !== 'published') {
     if (!form.content.trim()) {
       toast.error(t('help.admin.editor.contentRequired'))
@@ -275,6 +283,7 @@ function goBack() {
           <input
             v-model="form.title"
             type="text"
+            maxlength="200"
             class="w-full border-0 border-b border-border bg-transparent pb-3 text-[26px] font-bold leading-[34px]! tracking-[-.01em] outline-none"
             :placeholder="$t('help.admin.editor.titlePlaceholder')"
           >

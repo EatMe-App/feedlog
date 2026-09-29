@@ -985,6 +985,7 @@
         "leaveKeep": "Keep editing",
         "leaveDiscard": "Discard changes",
         "saveFailed": "Could not save the article",
+        "titleRequired": "Enter an article title.",
         "contentRequired": "Add article content before saving or publishing.",
         "saved": "Saved",
         "delete": "Delete article",

@@ -985,6 +985,7 @@
         "leaveKeep": "继续编辑",
         "leaveDiscard": "丢弃修改",
         "saveFailed": "文章保存失败",
+        "titleRequired": "请填写文章标题。",
         "contentRequired": "请填写正文后再保存或发布。",
         "saved": "已保存",
         "delete": "删除文章",
