@@ -16,8 +16,10 @@ export interface DashboardNav {
 
 export function useDashboardNav(): DashboardNav {
   const { t } = useI18n()
+  const { canModerate } = usePermission(computed(() => undefined), 'post')
   return {
     mainNav: computed(() => [
+      ...(canModerate.value ? [{ label: t('inbox.title'), to: '/dashboard/inbox', icon: 'lucide:inbox' }] : []),
       { label: t('nav.feedback'),  to: '/dashboard/feedback',  icon: 'lucide:message-square' },
       { label: t('nav.roadmap'),   to: '/dashboard/roadmap',   icon: 'lucide:map' },
       { label: t('nav.changelog'), to: '/dashboard/changelog', icon: 'lucide:newspaper' },

@@ -8,8 +8,9 @@ import { user } from './auth'
 import { conversation } from './widget'
 export const conversationItem = pgTable('conversation_item', {
   id: text().primaryKey(), conversationId: uuid('conversation_id').notNull().references(() => conversation.id),
-  seq: bigint({ mode: 'number' }).notNull(), authorType: text('author_type').$type<'customer' | 'agent'>().notNull(),
+  seq: bigint({ mode: 'number' }).notNull(), authorType: text('author_type').$type<'customer' | 'agent' | 'staff' | 'system'>().notNull(),
   authorUserId: text('author_user_id').references(() => user.id), content: jsonb().$type<Content>().notNull(),
+  requestHash: text('request_hash'),
   context: jsonb().$type<PageContext>(), agentRunId: uuid('agent_run_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t): PgTableExtraConfigValue[] => [
@@ -17,7 +18,8 @@ export const conversationItem = pgTable('conversation_item', {
   uniqueIndex('agent_item_conversation_seq').on(t.conversationId, t.seq), uniqueIndex('agent_item_run').on(t.agentRunId),
   check('item_id', sql`length(${t.id}) BETWEEN 1 AND 100`),
   check('item_seq', sql`${t.seq} > 0`),
-  check('item_author', sql`(${t.authorType} = 'customer' AND ${t.authorUserId} IS NOT NULL AND ${t.agentRunId} IS NULL) OR (${t.authorType} = 'agent' AND ${t.authorUserId} IS NULL AND ${t.agentRunId} IS NOT NULL AND ${t.context} IS NULL)`),
+  check('item_request_hash', sql`${t.requestHash} IS NULL OR ${t.requestHash} ~ '^[0-9a-f]{64}$'`),
+  check('item_author', sql`(${t.authorType} = 'customer' AND ${t.authorUserId} IS NOT NULL AND ${t.agentRunId} IS NULL) OR (${t.authorType} = 'agent' AND ${t.authorUserId} IS NULL AND ${t.agentRunId} IS NOT NULL AND ${t.context} IS NULL) OR (${t.authorType} = 'staff' AND ${t.authorUserId} IS NOT NULL AND ${t.agentRunId} IS NULL AND ${t.context} IS NULL) OR (${t.authorType} = 'system' AND ${t.agentRunId} IS NULL AND ${t.context} IS NULL)`),
   check('item_content', sql`${t.content} ? 'parts' AND jsonb_typeof(${t.content}) = 'object' AND jsonb_typeof(${t.content}->'parts') = 'array' AND jsonb_array_length(${t.content}->'parts') > 0`),
 ])
 export const agentRun = pgTable('agent_run', {

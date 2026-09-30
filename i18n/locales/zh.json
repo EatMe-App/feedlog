@@ -905,7 +905,14 @@
       "feedback_upvoted": "已投票",
       "feedback_comment_added": "已添加评论",
       "feedback_comment_updated": "已修改评论"
-    }
+    },
+    "conversationNotices": {
+      "handoff": "你的问题已转交人工客服。你可以继续在这里发送消息，补充相关情况或截图。"
+    },
+    "messageYou": "你",
+    "messageAI": "FeedLog AI",
+    "messageStaffNamed": "{name}",
+    "messageStaff": "客服"
   },
   "help": {
     "admin": {
@@ -1028,5 +1035,112 @@
       "rateLimited": "搜索太频繁",
       "rateLimitedHint": "请稍候片刻再试。"
     }
+  },
+  "inbox": {
+    "title": "Inbox",
+    "customer": "用户",
+    "noEmail": "无可用通知邮箱",
+    "priority": "优先级",
+    "normal": "普通",
+    "high": "高优",
+    "feedback": "关联 Feedback",
+    "noFeedback": "暂无来源反馈",
+    "loadMore": "加载更多",
+    "sourceConversation": "来源会话",
+    "refresh": "刷新",
+    "search": "搜索用户、标题或消息",
+    "status": "状态",
+    "all": "全部状态",
+    "allPriorities": "全部优先级",
+    "newest": "最新消息在前",
+    "oldest": "最早消息在前",
+    "loading": "加载中…",
+    "empty": "暂无会话",
+    "select": "选择一个会话开始处理",
+    "back": "返回",
+    "snooze": "稍后处理",
+    "resume": "恢复处理",
+    "close": "关闭会话",
+    "hideDetails": "收起详情",
+    "showDetails": "显示详情",
+    "wakeAt": "唤醒时间：",
+    "closeAt": "自动关闭时间：",
+    "earlier": "更早消息",
+    "ai": "AI",
+    "emailFailed": "邮件发送失败，请重试。",
+    "retryEmail": "重新发送一次",
+    "replyPlaceholder": "输入回复…",
+    "aiReplyUnavailable": "AI 正在处理，暂不可人工回复。",
+    "confirmClose": "确认关闭？用户再次发来新消息时，将由 AI 开始新一轮。",
+    "cancel": "取消",
+    "forbidden": "你没有 Inbox 访问权限。",
+    "loadFailed": "加载失败，请重试。",
+    "operationFailed": "未能确认操作结果，草稿已保留，请重试确认。",
+    "conflict": "会话已有更新，请查看最新消息后重试。",
+    "statuses": {
+      "ai_handling": "AI 接待中",
+      "open": "待处理",
+      "pending": "等待用户",
+      "snoozed": "稍后处理",
+      "closed": "已关闭"
+    },
+    "events": {
+      "handoff": "已转人工",
+      "reopened": "开始新一轮 AI 接待",
+      "customer_resumed": "用户恢复会话",
+      "priority_changed": "修改优先级",
+      "snoozed": "稍后处理",
+      "resumed": "恢复处理",
+      "closed": "关闭会话"
+    },
+    "matchedRule": "命中规则：{rule}",
+    "reasons": {
+      "user_requested": "用户明确请求人工",
+      "knowledge_gap": "知识不足，需人工解答",
+      "sensitive_or_permission": "涉及隐私或权限",
+      "dissatisfied": "用户问题尚未解决",
+      "support_rule": "命中支持规则",
+      "ai_error": "AI 无法继续处理",
+      "manual": "客服操作",
+      "timeout": "已到设定时间",
+      "customer_message": "用户新消息"
+    },
+    "snoozeOptions": {
+      "hour": "1 小时后",
+      "threeHours": "3 小时后",
+      "tomorrow": "明天",
+      "monday": "下周一",
+      "week": "一周后",
+      "month": "一个月后"
+    },
+    "customerDetails": "用户信息",
+    "properties": "会话属性",
+    "clearFilters": "清除筛选",
+    "replyToCustomer": "回复用户",
+    "removeImage": "移除图片",
+    "deliveryMode": "回复通知方式",
+    "deliveryAuto": "自动发送回复",
+    "deliveryAutoDescription": "回复 5 分钟后仍未读，再发邮件。",
+    "deliveryImmediate": "同时发送邮件",
+    "deliveryImmediateDescription": "发送回复，同时发邮件。",
+    "emailSkipped": "已读，无需发送邮件",
+    "emailSending": "重新发送中…",
+    "emailAccepted": "邮件通知已排队",
+    "openCount": "{count} 个待处理会话",
+    "unreadOpenCount": "{count} 个未读待处理会话",
+    "unread": "未读会话",
+    "handoffNotices": {
+      "user_requested": "应用户要求，已转交人工处理。",
+      "knowledge_gap": "需要进一步解答，已转交人工处理。",
+      "sensitive_or_permission": "涉及隐私或权限，已转交人工处理。",
+      "dissatisfied": "用户的问题尚未解决，已转交人工处理。",
+      "ai_error": "AI 暂时无法继续，已转交人工处理。",
+      "support_rule": "根据支持规则，已转交人工处理。",
+      "builtin-billing": "需要处理账单问题，已转交人工。",
+      "builtin-account-access": "需要协助处理账户访问问题，已转交人工。",
+      "builtin-privacy-legal": "涉及隐私请求，已转交人工处理。"
+    },
+    "noticeSnoozed": "{name} 暂缓了此会话，将于 {time} 恢复。",
+    "noticeClosed": "{name} 关闭了此会话。"
   }
 }

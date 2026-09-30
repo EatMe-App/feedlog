@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "NODE_OPTIONS=\"--max-old-space-size=4096 $NODE_OPTIONS\" nuxt build && mkdir -p .output/server/db && cp -r server/db/migrations .output/server/db/migrations",
-    "build:cf": "NITRO_PRESET=cloudflare-module pnpm build",
+    "build:cf": "NITRO_PRESET=cloudflare-module NODE_OPTIONS=\"$NODE_OPTIONS --max-old-space-size=8192\" pnpm build",
     "build:vercel": "pnpm migrate && NITRO_PRESET=vercel pnpm build",
     "deploy:cf": "wrangler deploy --cwd .output",
     "dev": "nuxt dev",
@@ -36,6 +36,7 @@
     "@nuxtjs/seo": "3.4.0",
     "@pinia/nuxt": "0.11.3",
     "@vercel/blob": "^2.3.3",
+    "@vercel/queue": "^0.7.0",
     "@vueuse/core": "^14.2.1",
     "ai": "7.0.105",
     "aws4fetch": "^1.0.20",

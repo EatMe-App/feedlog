@@ -9,6 +9,7 @@ export function useWidgetProtocol() {
   const route = useRoute()
   const embedded = ref(false)
   const supportsPageContext = ref(false)
+  const hostOrigin = ref<string | null>(null)
   const theme = ref<'light' | 'dark' | 'auto' | undefined>()
   let captureState: (() => unknown) | undefined
   let restoreState: ((state: unknown) => void) | undefined
@@ -41,6 +42,8 @@ export function useWidgetProtocol() {
     if (event.data?.v !== PROTOCOL_VERSION) return
     const { type, payload } = event.data
     if (type === 'init') {
+      const source = pageContext.safeParse({ origin: event.origin })
+      hostOrigin.value = source.success ? source.data.origin ?? null : null
       supportsPageContext.value = payload?.capabilities?.pageContext === true
       if (payload?.resumeState !== undefined) restoreState?.(payload.resumeState)
     }
@@ -55,13 +58,16 @@ export function useWidgetProtocol() {
   function init() {
     embedded.value = window.parent !== window
     supportsPageContext.value = false
+    hostOrigin.value = null
     window.addEventListener('message', receiveInit)
   }
 
   onBeforeUnmount(() => window.removeEventListener('message', receiveInit))
 
   async function requestPageContext(): Promise<PageContext | null> {
-    if (!embedded.value || !parentOrigin.value || !supportsPageContext.value) return null
+    if (!embedded.value || !parentOrigin.value) return null
+    const source = hostOrigin.value ? { origin: hostOrigin.value } : null
+    if (!supportsPageContext.value) return source
     const requestId = crypto.randomUUID()
     return new Promise(resolve => {
       const finish = (context: PageContext | null) => {
@@ -73,10 +79,10 @@ export function useWidgetProtocol() {
         if (event.source !== window.parent || event.origin !== parentOrigin.value) return
         if (event.data?.v !== 1 || event.data.type !== 'page-context' || event.data.payload?.requestId !== requestId) return
         const parsed = pageContext.safeParse(event.data.payload.context)
-        finish(parsed.success ? parsed.data : null)
+        finish(parsed.success ? { ...parsed.data, ...source } : source)
       }
       // A capable host can still fail to respond; context must not block sending.
-      const timer = setTimeout(() => finish(null), 500)
+      const timer = setTimeout(() => finish(source), 500)
       window.addEventListener('message', receive)
       send('page-context-request', { requestId })
     })

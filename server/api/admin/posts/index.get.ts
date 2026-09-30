@@ -1,5 +1,6 @@
+import { z } from 'zod'
 import { eq, and, asc, desc, sql } from 'drizzle-orm'
-import { post, user } from '#layers/feedlog/server/db/schemas'
+import { conversation, post, user } from '#layers/feedlog/server/db/schemas'
 
 // GET /api/admin/posts — Admin post list (page pagination)
 // Org-member gate only: the list itself is read-only and contributors need
@@ -17,7 +18,16 @@ export default defineEventHandler(async (event): Promise<PagePaginatedList<PostL
 
   const db = useDB()
 
-  const whereClause = and(...postFilterConditions(parsePostFilter(query, orgId)))
+  const filters = postFilterConditions(parsePostFilter(query, orgId))
+  if (query.sourceConversationId !== undefined) {
+    await requireOrgPermission(event, { feedlog: ['moderate'] })
+    const parsed = z.uuid().safeParse(query.sourceConversationId)
+    if (!parsed.success) throw createError({ statusCode: 422, message: 'Invalid source conversation' })
+    const [source] = await db.select({ id: conversation.id }).from(conversation).where(and(eq(conversation.id, parsed.data), eq(conversation.orgId, orgId))).limit(1)
+    if (!source) throw createError({ statusCode: 404, message: 'Conversation not found' })
+    filters.push(eq(post.sourceConversationId, parsed.data))
+  }
+  const whereClause = and(...filters)
 
   const sortCol = sort === 'votes' ? post.voteCount : sort === 'comments' ? post.commentCount : post.createdAt
   // The id tiebreaker follows the same direction, or equal-value rows shift between pages.

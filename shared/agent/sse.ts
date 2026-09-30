@@ -5,6 +5,7 @@ type AgentEvent =
   | [name: 'tool', data: Extract<StreamEvent, { type: 'tool' }>]
   | [name: 'text', data: { delta: string }]
   | [name: 'finish', data: { runId: string; itemId: string; lastSeq: number }]
+  | [name: 'handoff' | 'closed', data: { runId: string; noticeItemId: string; lastSeq: number; handling: 'human' | 'closed' }]
   | [name: 'error', data: { message: string }]
 
 export async function readAgentEvents(stream: ReadableStream<Uint8Array>, onEvent: (...event: AgentEvent) => void) {

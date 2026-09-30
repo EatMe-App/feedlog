@@ -6,15 +6,22 @@ import { normalizeBrandHex, pickBrandForegroundHex } from '../../shared/utils/br
 const BRAND_COLOR = '#C45A46'
 const FONT_STACK = `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`
 
-function layout({ preheader, content }: { preheader: string; content: string }): string {
+export function renderInboxReplyEmail({ reply, productName, topic, url }: { reply: string; productName: string; topic: string; url?: string }) {
+  const intro = topic ? `You have a reply about ${topic} from ${productName}.` : `You have a reply from ${productName}.`
+  const hint = `Open the support chat in ${productName} to reply.`
+  const text = [intro, reply, url ? `Continue conversation: ${url}` : '', hint].filter(Boolean).join('\n\n')
+  return { text, html: layout({ brandName: productName, preheader: intro, content: `<p>${escapeHtml(intro)}</p><p style="white-space:pre-wrap">${escapeHtml(reply)}</p>${url ? actionButton(escapeHtml(url), 'Continue conversation') : ''}<p>${escapeHtml(hint)}</p>` }) }
+}
+
+function layout({ preheader, content, brandName }: { preheader: string; content: string; brandName?: string }): string {
   return `
 <div style="font-family: ${FONT_STACK}; max-width: 600px; margin: 0 auto; padding: 32px 24px; color: #111827; line-height: 1.55;">
-  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${preheader}</div>
+  <div style="display: none; max-height: 0; overflow: hidden; mso-hide: all;">${brandName ? escapeHtml(preheader) : preheader}</div>
   <div style="padding-bottom: 20px; border-bottom: 1px solid #e5e7eb; margin-bottom: 24px;">
-    <span style="font-size: 20px; font-weight: 700; color: ${BRAND_COLOR}; letter-spacing: -0.01em;">FeedLog</span>
+    <span style="font-size: 20px; font-weight: 700; color: ${BRAND_COLOR}; letter-spacing: -0.01em;">${brandName ? escapeHtml(brandName) : 'FeedLog'}</span>
   </div>
   ${content}
-  ${signature()}
+  ${brandName ? `<p style="border-top: 1px solid #e5e7eb; padding-top: 20px; color: #6b7280; font-size: 13px;">&mdash; ${escapeHtml(brandName)} Support</p>` : signature()}
 </div>
 `
 }

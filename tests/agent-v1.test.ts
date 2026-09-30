@@ -1,3 +1,6 @@
+import { recoverLocked } from '../server/lib/inbox/service'
+import { syncRunTask } from '../server/lib/inbox/tasks'
+import { inboxTick } from '../server/lib/inbox/tick'
 /* eslint-disable @typescript-eslint/no-explicit-any -- Fixtures exercise partial request contexts and heterogeneous tool outputs. */
 import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
@@ -5,7 +8,7 @@ import { uuidv7 } from 'uuidv7'
 import { createError } from 'h3'
 import { chatInput, customerContent, pageContext } from '../shared/agent/content'
 import { readAgentEvents } from '../shared/agent/sse'
-import { agentRuntime, transaction, appendItem, expireRuns, lockConversation, type Actor } from '../server/lib/agent/runtime'
+import { agentRuntime, transaction, appendItem, lockConversation, publicItem, type Actor } from '../server/lib/agent/runtime'
 import { startRun, failRun } from '../server/lib/agent/conversations'
 import { feedlogTools } from '../server/lib/agent/tools'
 import { searchHelpArticles } from '../server/lib/agent/help-search'
@@ -35,6 +38,7 @@ async function fixture() {
   const cleanup = async () => {
     const { rows } = await pool.query('SELECT id FROM conversation WHERE org_id=$1', [orgId])
     for (const row of rows) {
+      await pool.query('DELETE FROM scheduled_task WHERE ref_id=$1 OR ref_id IN (SELECT id FROM agent_run WHERE conversation_id=$1)', [row.id])
       await pool.query('DELETE FROM mastra_messages WHERE thread_id=$1', [row.id])
       await pool.query('DELETE FROM mastra_threads WHERE id=$1', [row.id])
       await pool.query("DELETE FROM conversation_item WHERE conversation_id=$1 AND author_type='agent'", [row.id])
@@ -83,7 +87,7 @@ test('first-send concurrency, ownership, unchanged idempotency, retries, sequenc
     await rejectsCode(() => startRun(runtime, f.conversationId, f.actor, send('Second input')), 'conversation_busy')
     await failRun(runtime, first.run.id, 'Test failure')
     assert.equal((await startRun(runtime, f.conversationId, f.actor, input)).run.status, 'failed')
-    await rejectsCode(() => startRun(runtime, f.conversationId, f.actor, { ...input, idempotency_key: uuidv7() }), 'idempotency_conflict')
+    assert.equal((await startRun(runtime, f.conversationId, f.actor, { ...input, idempotency_key: uuidv7() })).duplicate, true)
     const retry = await startRun(runtime, f.conversationId, f.actor, { action: 'retry', idempotency_key: uuidv7(), trigger_item_id: input.message.id })
     assert.notEqual(retry.run.id, first.run.id)
     await transaction(runtime, async client => {
@@ -98,8 +102,9 @@ test('first-send concurrency, ownership, unchanged idempotency, retries, sequenc
     assert.equal(conversation.title, 'Test request')
     const next = await startRun(runtime, f.conversationId, f.actor, send('New message'))
     await pool.query("UPDATE agent_run SET started_at=now()-interval '3 minutes',deadline_at=now()-interval '1 minute' WHERE id=$1", [next.run.id])
-    await expireRuns(pool, f.conversationId)
-    assert.equal((await pool.query('SELECT status FROM agent_run WHERE id=$1', [next.run.id])).rows[0].status, 'failed')
+    await transaction(runtime, client => syncRunTask(client, next.run.id))
+    await inboxTick(runtime)
+    assert.equal((await pool.query('SELECT status FROM agent_run WHERE id=$1', [next.run.id])).rows[0].status, 'cancelled')
     const oldId = uuidv7()
     await pool.query('INSERT INTO conversation (id,org_id,user_id) VALUES ($1,$2,$3)', [oldId, f.orgId, f.userId])
     await pool.query("INSERT INTO message (id,conversation_id,role,text) VALUES ($1,$2,'user','Old history')", [uuidv7(), oldId])
@@ -192,8 +197,168 @@ test('feedback correction enforces ten-minute/community limits and falls back to
     await transaction(runtime, async client => {
       await client.query("UPDATE agent_run SET status='running',error=NULL,finished_at=NULL,deadline_at=clock_timestamp()+interval '100 milliseconds' WHERE id=$1", [execution.run.id])
       await client.query('SELECT pg_sleep(0.15)')
-      await expireRuns(client, f.conversationId)
-      assert.equal((await client.query('SELECT status FROM agent_run WHERE id=$1', [execution.run.id])).rows[0].status, 'failed')
+      await recoverLocked(client, await lockConversation(client, f.conversationId, f.actor))
+      assert.equal((await client.query('SELECT status FROM agent_run WHERE id=$1', [execution.run.id])).rows[0].status, 'cancelled')
     })
   } finally { await f.cleanup() }
+})
+
+
+test('handoff tool commits once, stops the active run and fences later feedback writes', async () => {
+  const f = await fixture()
+  try {
+    const input = send('A human please')
+    const run = await startRun(runtime, f.conversationId, f.actor, input)
+    const controller = new AbortController()
+    const context = await loadAgentPromptContext(pool, f.actor)
+    const bundle = feedlogTools(event, f.actor, f.conversationId, run.run!.id, run.item.id, controller.signal, () => {}, context, () => controller.abort())
+    const result = await bundle.tools.handoff_to_human.execute!({ reason: 'user_requested' }, {} as any)
+    assert.deepEqual(result, { handoff: true, status: 'open', stop: true })
+    assert.equal(controller.signal.aborted, true)
+    assert.equal((await pool.query('SELECT status FROM conversation WHERE id=$1', [f.conversationId])).rows[0].status, 'open')
+    await assert.rejects(() => bundle.tools.add_feedback_comment.execute!({ feedback_id: uuidv7(), content: 'Late write' }, {} as any))
+    assert.equal((await pool.query("SELECT count(*)::int AS count FROM conversation_item WHERE conversation_id=$1 AND author_type='system'", [f.conversationId])).rows[0].count, 1)
+  } finally { await f.cleanup() }
+})
+
+test('feedback followed by handoff preserves one visible receipt before the notice, including replay', async () => {
+  const f = await fixture()
+  try {
+    const boardId = uuidv7()
+    await pool.query("INSERT INTO board (id,org_id,name) VALUES ($1,$2,'Suggestions')", [boardId, f.orgId])
+    const execution = await startRun(runtime, f.conversationId, f.actor, send('Please record the missing export option and let me speak to a person.'))
+    await memory.createThread({ threadId: f.conversationId, resourceId: `${f.orgId}:${f.conversationId}`, title: 'Test' })
+    const context = await loadAgentPromptContext(pool, f.actor)
+    const controller = new AbortController()
+    const bundle = feedlogTools(event, f.actor, f.conversationId, execution.run.id, execution.item.id, controller.signal, () => {}, context, () => controller.abort())
+    const created = await bundle.tools.create_feedback.execute!({ board_id: boardId, title: 'Export option', content: 'I need an option to export my reports.' }, {} as any) as any
+    const feedbackId = created.feedback.feedback_id
+    assert.equal((await pool.query('SELECT source_conversation_id FROM post WHERE id=$1', [feedbackId])).rows[0].source_conversation_id, f.conversationId)
+    const call = () => bundle.tools.handoff_to_human.execute!({ reason: 'user_requested' }, {} as any)
+    assert.deepEqual(await call(), { handoff: true, status: 'open', stop: true })
+    assert.equal(controller.signal.aborted, true)
+    const items = () => pool.query('SELECT * FROM conversation_item WHERE conversation_id=$1 ORDER BY seq', [f.conversationId])
+    const { rows } = await items()
+    assert.deepEqual(rows.map(row => row.author_type), ['customer', 'agent', 'system'])
+    const receipt = publicItem(rows[1])!
+    assert.equal(receipt.agentRunId, execution.run.id)
+    assert.deepEqual((receipt.content as any).parts.map((part: any) => [part.type, part.feedback_id]), [['feedback_created', feedbackId]])
+    assert.equal(publicItem(rows[2])!.notice, 'handoff')
+    await call()
+    assert.equal((await items()).rows.length, 3)
+    assert.equal((await pool.query('SELECT count(*)::int AS count FROM post WHERE source_conversation_id=$1', [f.conversationId])).rows[0].count, 1)
+  } finally { await f.cleanup() }
+})
+
+test('handoff recovers write, task and receipt-refresh failures without customer intervention', async () => {
+  for (const failure of ['transition', 'task', 'receipt-refresh']) {
+    const f = await fixture()
+    const originalConnect = pool.connect
+    const originalQuery = pool.query
+    let failures = 0
+    try {
+      const boardId = uuidv7()
+      await pool.query("INSERT INTO board (id,org_id,name) VALUES ($1,$2,'Suggestions')", [boardId, f.orgId])
+      const execution = await startRun(runtime, f.conversationId, f.actor, send())
+      await memory.createThread({ threadId: f.conversationId, resourceId: `${f.orgId}:${f.conversationId}`, title: 'Test' })
+      const context = { ...await loadAgentPromptContext(pool, f.actor), supportEmail: 'support@example.invalid' }
+      const controller = new AbortController()
+      const bundle = feedlogTools(event, f.actor, f.conversationId, execution.run.id, execution.item.id, controller.signal, () => {}, context, () => controller.abort())
+      await bundle.tools.create_feedback.execute!({ board_id: boardId, title: 'Export option', content: 'I need an export option.' }, {} as any)
+      // Exercise a real aborted transaction, persistent task failure and an unavailable card refresh.
+      if (failure === 'task') await pool.query("UPDATE agent_run SET started_at=clock_timestamp()-interval '3 minutes',deadline_at=clock_timestamp()-interval '1 second' WHERE id=$1", [execution.run.id])
+      pool.query = ((text: string, ...args: any[]) => {
+        if (failure === 'receipt-refresh' && text.startsWith('SELECT metadata FROM organization')) {
+          failures++
+          return Promise.reject(new Error('Simulated receipt refresh failure'))
+        }
+        return (originalQuery as any).call(pool, text, ...args)
+      }) as any
+      pool.connect = ((callback?: (...args: any[]) => void) => {
+        if (callback) return (originalConnect as any).call(pool, callback)
+        return (originalConnect as any).call(pool).then((client: any) => {
+          const query = client.query
+          const release = client.release
+          client.query = ((text: string, ...args: any[]) => {
+            if ((failure === 'transition' && !failures && text.startsWith("UPDATE conversation SET status='open'"))
+              || (failure === 'task' && text.startsWith('INSERT INTO scheduled_task'))) {
+              failures++
+              return (query as any).call(client, 'SELECT 1/0')
+            }
+            return (query as any).call(client, text, ...args)
+          }) as any
+          client.release = (...args: any[]) => { client.query = query; client.release = release; return release.apply(client, args as any) }
+          return client
+        })
+      }) as any
+      const result = await bundle.tools.handoff_to_human.execute!({ reason: 'user_requested' }, {} as any) as any
+      pool.connect = originalConnect
+      pool.query = originalQuery
+      assert.ok(failures > 0, failure)
+      assert.deepEqual(result, { handoff: true, status: 'open', stop: true })
+      assert.equal(controller.signal.aborted, true)
+      assert.deepEqual((await pool.query('SELECT status,state_due_at FROM conversation WHERE id=$1', [f.conversationId])).rows[0], { status: 'open', state_due_at: null })
+      assert.equal((await pool.query('SELECT status FROM agent_run WHERE id=$1', [execution.run.id])).rows[0].status, 'cancelled')
+      const { rows } = await pool.query('SELECT * FROM conversation_item WHERE conversation_id=$1 ORDER BY seq', [f.conversationId])
+      assert.deepEqual(rows.map(row => row.author_type), ['customer', 'agent', 'system'])
+      assert.equal(rows[1].content.parts[0].type, 'feedback_created')
+      assert.equal(rows[2].content.parts[0].reason, 'user_requested')
+      assert.equal((await pool.query('SELECT count(*)::int AS count FROM post WHERE source_conversation_id=$1', [f.conversationId])).rows[0].count, 1)
+      await bundle.tools.handoff_to_human.execute!({ reason: 'user_requested' }, {} as any)
+      assert.equal((await pool.query('SELECT count(*)::int AS count FROM conversation_item WHERE conversation_id=$1', [f.conversationId])).rows[0].count, 3)
+      await pool.query("UPDATE scheduled_task SET schedule_at=clock_timestamp()-interval '1 minute' WHERE ref_id=$1 OR ref_id=$2", [f.conversationId, execution.run.id])
+      await inboxTick(runtime)
+      assert.equal((await pool.query('SELECT status FROM conversation WHERE id=$1', [f.conversationId])).rows[0].status, 'open')
+    } finally { pool.connect = originalConnect; pool.query = originalQuery; await f.cleanup() }
+  }
+})
+
+
+test('rule handoffs validate configured IDs, preserve rule snapshots and hide details from Widget', async () => {
+  for (const ruleId of ['builtin-billing', 'custom-on']) {
+    const f = await fixture()
+    try {
+      await pool.query('INSERT INTO organization_widget (org_id,disabled_builtins,custom_rules) VALUES ($1,$2,$3)', [f.orgId,
+        JSON.stringify(['builtin-account-access']), JSON.stringify([
+          { id: 'custom-on', scenario: 'Customer requests a team migration', enabled: true },
+          { id: 'custom-off', scenario: 'Disabled scenario', enabled: false },
+        ])])
+      const run = await startRun(runtime, f.conversationId, f.actor, send('Please help with this support case'))
+      const context = await loadAgentPromptContext(pool, f.actor)
+      const bundle = feedlogTools(event, f.actor, f.conversationId, run.run!.id, run.item.id, new AbortController().signal, () => {}, context)
+      const call = (input: any) => bundle.tools.handoff_to_human.execute!(input, {} as any)
+      for (const invalid of [undefined, 'unknown', 'builtin-account-access', 'custom-off']) {
+        assert.ok('error' in await call({ reason: 'support_rule', rule_id: invalid }))
+      }
+      assert.ok('error' in await call({ reason: 'user_requested', rule_id: ruleId }))
+      assert.equal((await pool.query('SELECT status FROM conversation WHERE id=$1', [f.conversationId])).rows[0].status, 'ai_handling')
+      assert.deepEqual(await call({ reason: 'support_rule', rule_id: ruleId }), { handoff: true, status: 'open', stop: true })
+      const saved = async () => (await pool.query("SELECT * FROM conversation_item WHERE conversation_id=$1 AND author_type='system'", [f.conversationId])).rows
+      const original = await saved()
+      assert.equal(original.length, 1)
+      const part = original[0].content.parts[0]
+      assert.equal(part.reason, 'support_rule')
+      assert.deepEqual(part.rule, context.supportRules.find(rule => rule.id === ruleId))
+      const visible = JSON.stringify(publicItem(original[0]))
+      assert.ok(!visible.includes(ruleId))
+      assert.ok(!visible.includes(part.rule.scenario))
+      await pool.query("UPDATE organization_widget SET disabled_builtins=$2,custom_rules='[]'::jsonb WHERE org_id=$1", [f.orgId, JSON.stringify(['builtin-billing', 'builtin-account-access', 'builtin-privacy-legal'])])
+      assert.deepEqual((await loadAgentPromptContext(pool, f.actor)).supportRules, [])
+      await call({ reason: 'support_rule', rule_id: ruleId })
+      assert.deepEqual(await saved(), original)
+    } finally { await f.cleanup() }
+  }
+})
+
+
+test('Widget hides internal lifecycle events and exposes only a short handoff notice', () => {
+  for (const kind of ['closed', 'reopened', 'snoozed', 'resumed', 'priority_changed', 'customer_resumed', 'handoff']) {
+    const item = { id: 'event', seq: 2, author_type: 'system', created_at: new Date().toISOString(), content: { parts: [{ type: 'system_event', kind, reason: 'manual', fromStatus: 'open', toStatus: 'closed' }] } }
+    const visible = publicItem(item)
+    if (kind === 'handoff') {
+      assert.equal(visible?.notice, 'handoff')
+      assert.deepEqual(visible?.content, { parts: [{ type: 'text', text: "I've passed your request to our support team. They'll follow up and help you with it." }] })
+    } else assert.equal(visible, null)
+    assert.equal(item.content.parts[0]!.kind, kind)
+  }
 })

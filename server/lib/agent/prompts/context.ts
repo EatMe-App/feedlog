@@ -2,7 +2,7 @@ import type { Pool } from 'pg'
 import type { Actor } from '../runtime'
 import type { AgentPromptArticle, AgentPromptBoard, AgentPromptContext } from './system'
 import { resolveGuestAccess } from '../../../../shared/utils/guest'
-import { getEnabledRuleScenarios, type WidgetConfigRow } from '../../../../shared/utils/widget-settings'
+import { getEnabledSupportRules, type WidgetConfigRow } from '../../../../shared/utils/widget-settings'
 import { isActorAdmin, type OrgListSession } from '../../../../shared/utils/notifications'
 import { isGuestSession } from '../../../utils/guest'
 
@@ -32,7 +32,7 @@ export async function loadAgentPromptContext(pool: Pool, actor: Actor): Promise<
     productName: product.name,
     boards: boards.rows,
     supportEmail: settings?.supportEmail,
-    supportRules: getEnabledRuleScenarios(settings),
+    supportRules: getEnabledSupportRules(settings),
     knowledgeEnabled: articles.rows.length > 0,
     articles: articles.rows,
     feedback: {

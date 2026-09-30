@@ -1,3 +1,5 @@
+import { handoff } from '../inbox/service'
+import { handoffReason } from '../../../shared/inbox/state'
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 import { uuidv7 } from 'uuidv7'
@@ -19,7 +21,7 @@ interface FeedbackRow {
   has_voted: boolean; subscribed: boolean; edit_window_open: boolean; community_activity: boolean
 }
 type Effect = { id: string; kind: string; triggerId: string; feedbackId?: string }
-export function feedlogTools(event: H3Event, actor: Actor, conversationId: string, runId: string, triggerId: string, signal: AbortSignal, emit: (event: StreamEvent) => void, promptContext: AgentPromptContext) {
+export function feedlogTools(event: H3Event, actor: Actor, conversationId: string, runId: string, triggerId: string, signal: AbortSignal, emit: (event: StreamEvent) => void, promptContext: AgentPromptContext, onHandoff?: () => void) {
   const runtime = agentRuntime(event)
   const { pool, memory } = runtime
   const cards: Part[] = []
@@ -117,6 +119,19 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
   const imageInput = z.array(z.string().min(1).max(1000)).max(10).optional().describe('Storage keys of images supplied by this customer in this conversation, relevant to the feedback.')
   const idInput = z.object({ feedback_id: z.uuid() })
   const tools = {
+    handoff_to_human: createTool({
+      id: 'handoff_to_human', description: 'Transfer this conversation to human support and end AI handling only after an explicit request for a person, acceptance of an offer to involve one, or a matching mandatory support rule. A knowledge miss, frustration, a how-to question, or a failed tool alone is not consent. Feature suggestions, bug reports and requests to leave feedback use feedback tools; do not replace them with handoff. For a mixed request, finish the appropriate feedback action before calling this tool. Never call it in parallel with another tool.',
+      inputSchema: z.object({ reason: handoffReason, rule_id: z.string().min(1).optional().describe('Required for support_rule: the matching enabled rule ID from the configured support rules. Omit for other reasons.') }).strict(),
+      execute: async ({ reason, rule_id }) => {
+        const rule = reason === 'support_rule' ? promptContext.supportRules.find(rule => rule.id === rule_id) : undefined
+        if (reason === 'support_rule' && !rule) return { error: 'Choose a matching configured support rule ID, or use the appropriate other handoff reason.' }
+        if (reason !== 'support_rule' && rule_id) return { error: 'rule_id is only valid for support_rule.' }
+        const saved = await handoff(runtime, conversationId, actor.orgId, runId, reason, true, rule, await feedbackResults())
+        if (!saved) throw new Error('Run is no longer active')
+        onHandoff?.()
+        return { handoff: true, status: 'open', stop: true }
+      },
+    }),
     search_help_articles: tool('search_help_articles', helpArticleSearchDescription, helpArticleSearchInput, input => searchHelpArticles(pool, actor.orgId, input, getRequestURL(event).origin)),
     read_help_article: tool('read_help_article', 'Read an AI-enabled article by article_id or the shortId-slug segment of an internal article link. Follow relevant links to establish facts. customer_visible determines whether it can be cited publicly; internal articles can inform answers.', z.object({ article_id: z.uuid().optional(), slug: z.string().min(1).max(200).optional() }).refine(input => !!input.article_id !== !!input.slug, 'Provide either article_id or slug'), async ({ article_id, slug }) => {
       const { rows: [article] } = await pool.query(`SELECT a.id AS article_id,a.short_id,a.slug,a.title,a.content,(a.status='published' AND c.visible) AS published,o.metadata FROM help_article a JOIN help_collection c ON c.id=a.collection_id JOIN organization o ON o.id=a.org_id
@@ -156,7 +171,7 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
       const ids = await createdIds('comment')
       return { feedback: feedbackDetails(p, await createdIds('feedback')), comments: rows.slice(0, 20).map(c => ({ comment_id: c.id, content: c.content, created_at: c.created_at, edited_at: c.edited_at, editable: c.author_id === actor.customerId && ids.has(c.id) })), next_comments_cursor: rows.length > 20 ? rows[19].id : null }
     }),
-    create_feedback: tool('create_feedback', 'Create one public feedback per customer message for a clearly described problem or improvement request expressed by the customer. Handle requests to use or execute product features through product guidance. Search duplicates first and preserve the customer\'s actual details. If this message already created feedback, returns that feedback; use update_feedback for corrections.', z.object({ title: z.string().min(1).max(200), content: z.string().min(1).max(10000), board_id: z.uuid(), images: imageInput }), async input => {
+    create_feedback: tool('create_feedback', 'Record one public product problem, bug report, or improvement request per customer message. This does not transfer the conversation to a person. Use product guidance for how-to questions; missing knowledge alone is not feedback. Search duplicates first, remove private account details, and preserve the customer\'s actual concern. If the customer also explicitly wants a person, complete this action before handoff. If this message already created feedback, return that feedback; use update_feedback for corrections.', z.object({ title: z.string().min(1).max(200), content: z.string().min(1).max(10000), board_id: z.uuid(), images: imageInput }), async input => {
       input.content = await attachImages(input.content, input.images)
       await assertGuestMay(event, actor.session, 'allowPost')
       const { saved, created } = await write(async client => {
@@ -165,7 +180,7 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
         if (!rowCount) throw new Error('Board is not available')
         const effect = await reserve('feedback')
         const slug = `${slugify(input.title, { lower: true, strict: true }).slice(0, 80)}-${effect.id.slice(-8)}`
-        const { rowCount: created } = await client.query(`INSERT INTO post (id,org_id,author_id,board_id,title,content,excerpt,slug,content_hash) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING`, [effect.id, actor.orgId, actor.customerId, input.board_id, input.title, input.content, generateExcerpt(input.content), slug, hash(input.title, input.content)])
+        const { rowCount: created } = await client.query(`INSERT INTO post (id,org_id,author_id,board_id,title,content,excerpt,slug,content_hash,source_conversation_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO NOTHING`, [effect.id, actor.orgId, actor.customerId, input.board_id, input.title, input.content, generateExcerpt(input.content), slug, hash(input.title, input.content), conversationId])
         if (created) {
           await client.query('INSERT INTO post_search (post_id,org_id,search_text) VALUES ($1,$2,$3)', [effect.id, actor.orgId, stripMarkdown(`${input.title}\n${input.content}`)])
           if (!isActorAdmin(actor.session as OrgListSession, actor.orgId)) await client.query('INSERT INTO post_subscription (post_id,user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [effect.id, actor.customerId])
@@ -250,7 +265,7 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
     if (name === 'upvote_and_subscribe_feedback') return promptContext.feedback.vote
     return true
   }))
-  return { tools: enabledTools, resultParts: async () => {
+  async function resultParts() {
     const { rows: [org] } = await pool.query('SELECT metadata FROM organization WHERE id=$1', [actor.orgId])
     const { rows: visible } = await pool.query(`SELECT a.id FROM help_article a JOIN help_collection c ON c.id=a.collection_id AND c.org_id=a.org_id
       WHERE a.org_id=$1 AND a.ai_enabled AND a.status='published' AND c.visible`, [actor.orgId])
@@ -270,5 +285,12 @@ export function feedlogTools(event: H3Event, actor: Actor, conversationId: strin
     return refreshed.flatMap<Part>(part => part.type === 'article_reference'
       ? (part.articles.some(a => ids.has(a.article_id)) ? [{ ...part, articles: part.articles.filter(a => ids.has(a.article_id)) }] : [])
       : part.type === 'feedback_upvoted' && cards.some(other => other.type === 'feedback_comment_added' && other.feedback_id === part.feedback_id) ? [] : [part])
-  } }
+  }
+  async function feedbackResults() {
+    let parts = cards
+    try { parts = await resultParts() }
+    catch { console.warn('[agent] Preserving confirmed feedback receipts without refresh', { conversationId, runId }) }
+    return parts.filter((part): part is FeedbackPart => 'feedback_id' in part)
+  }
+  return { tools: enabledTools, resultParts, feedbackResults }
 }

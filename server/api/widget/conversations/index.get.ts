@@ -1,3 +1,4 @@
+import { handling } from '../../../../shared/inbox/state'
 import { and, desc, eq, gt, sql } from 'drizzle-orm'
 import { conversation, conversationItem } from '#layers/feedlog/server/db/schemas'
 import { withinRetention } from '#layers/feedlog/server/utils/conversation'
@@ -10,6 +11,7 @@ export interface WidgetConversationItem {
   lastMessageAt: Date
   lastSeq: number
   unread: boolean
+  handling: 'ai' | 'human' | 'closed'
 }
 
 // The visitor's own conversations, newest first. Unpaged: a visitor accumulates
@@ -20,6 +22,7 @@ export default defineEventHandler(async (event): Promise<{ data: WidgetConversat
   const rows = await useDB()
     .select({
       id: conversation.id,
+      status: conversation.status,
       title: conversation.title,
       preview: conversation.previewText,
       lastMessageAt: conversation.lastMessageAt,
@@ -41,5 +44,5 @@ export default defineEventHandler(async (event): Promise<{ data: WidgetConversat
     ))
     .orderBy(desc(conversation.lastMessageAt), desc(conversation.id))
 
-  return { data: rows }
+  return { data: rows.map(({ status, ...row }) => ({ ...row, handling: handling(status) })) }
 })

@@ -1,3 +1,4 @@
+import type { HandoffRule } from '../inbox/state'
 import { CONVERSATION_RETENTION_DEFAULT_DAYS } from '../constants/conversation'
 import {
   WIDGET_LAUNCHER_CONFIG_DEFAULT,
@@ -71,16 +72,11 @@ export function resolveWidgetSettings(row: WidgetConfigRow | undefined | null): 
   }
 }
 
-// Enabled builtins + enabled custom rules, as English scenario texts for the AI
-// prompt. Empty = no handoff rules, so the AI never redirects to support.
-export function getEnabledRuleScenarios(row: Pick<WidgetConfigRow, 'disabledBuiltins' | 'customRules'> | undefined | null): string[] {
-  const disabledBuiltins = row?.disabledBuiltins ?? []
-  const customRules = row?.customRules ?? []
-  const builtin = WIDGET_BUILTIN_RULES
-    .filter(r => !disabledBuiltins.includes(r.id))
-    .map(r => r.scenario)
-  const custom = customRules
-    .filter(r => r.enabled)
-    .map(r => r.scenario)
-  return [...builtin, ...custom]
+// Preserve rule identities and configured wording for handoff attribution.
+export function getEnabledSupportRules(row: WidgetConfigRow | undefined | null): HandoffRule[] {
+  const settings = resolveWidgetSettings(row)
+  return [
+    ...settings.rules.builtins.filter(r => r.enabled).map(({ id, scenario, scenarioZh }) => ({ id, scenario, scenarioZh })),
+    ...settings.rules.custom.filter(r => r.enabled).map(({ id, scenario }) => ({ id, scenario })),
+  ]
 }

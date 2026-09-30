@@ -120,6 +120,13 @@
       "when": 1790663038693,
       "tag": "0016_member_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790741495915,
+      "tag": "0017_inbox",
+      "breakpoints": true
     }
   ]
 }
