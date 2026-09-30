@@ -905,7 +905,14 @@
       "feedback_upvoted": "Feedback upvoted",
       "feedback_comment_added": "Comment added",
       "feedback_comment_updated": "Comment edited"
-    }
+    },
+    "conversationNotices": {
+      "handoff": "Your question has been passed to our support team. You can send more details or screenshots here."
+    },
+    "messageYou": "You",
+    "messageAI": "FeedLog AI",
+    "messageStaffNamed": "{name}",
+    "messageStaff": "Support"
   },
   "help": {
     "admin": {
@@ -1028,5 +1035,112 @@
       "rateLimited": "Too many searches",
       "rateLimitedHint": "You are searching faster than we can keep up. Try again in a moment."
     }
+  },
+  "inbox": {
+    "title": "Inbox",
+    "customer": "Customer",
+    "noEmail": "No notification email available",
+    "priority": "Priority",
+    "normal": "Normal",
+    "high": "High",
+    "feedback": "Related feedback",
+    "noFeedback": "No feedback from this conversation",
+    "loadMore": "Load more",
+    "sourceConversation": "Source conversation",
+    "refresh": "Refresh",
+    "search": "Search customer, title or message",
+    "status": "Status",
+    "all": "All statuses",
+    "allPriorities": "All priorities",
+    "newest": "Newest first",
+    "oldest": "Oldest first",
+    "loading": "Loading…",
+    "empty": "No conversations",
+    "select": "Select a conversation to start",
+    "back": "Back",
+    "snooze": "Snooze",
+    "resume": "Resume",
+    "close": "Close conversation",
+    "hideDetails": "Hide details",
+    "showDetails": "Show details",
+    "wakeAt": "Wake-up time:",
+    "closeAt": "Automatically closes:",
+    "earlier": "Earlier messages",
+    "ai": "AI",
+    "emailFailed": "Email failed to send. Please retry.",
+    "retryEmail": "Resend once",
+    "replyPlaceholder": "Write a reply…",
+    "aiReplyUnavailable": "AI is handling this conversation. Staff replies are currently unavailable.",
+    "confirmClose": "Close this conversation? A new customer message will start a new AI round.",
+    "cancel": "Cancel",
+    "forbidden": "You do not have permission to access Inbox.",
+    "loadFailed": "Could not load this conversation. Please retry.",
+    "operationFailed": "Could not confirm this operation. Your draft is preserved; retry to confirm the result.",
+    "conflict": "This conversation changed. Review the latest messages before retrying.",
+    "statuses": {
+      "ai_handling": "AI handling",
+      "open": "Open",
+      "pending": "Waiting for customer",
+      "snoozed": "Snoozed",
+      "closed": "Closed"
+    },
+    "events": {
+      "handoff": "Handed to support",
+      "reopened": "New AI round",
+      "customer_resumed": "Customer resumed conversation",
+      "priority_changed": "Priority changed",
+      "snoozed": "Snoozed",
+      "resumed": "Resumed",
+      "closed": "Closed"
+    },
+    "matchedRule": "Matched rule: {rule}",
+    "reasons": {
+      "user_requested": "Customer requested a human",
+      "knowledge_gap": "More support knowledge needed",
+      "sensitive_or_permission": "Privacy or permissions",
+      "dissatisfied": "Customer still needs help",
+      "support_rule": "Support rule",
+      "ai_error": "AI could not continue",
+      "manual": "Staff action",
+      "timeout": "Scheduled time reached",
+      "customer_message": "New customer message"
+    },
+    "snoozeOptions": {
+      "hour": "In 1 hour",
+      "threeHours": "In 3 hours",
+      "tomorrow": "Tomorrow",
+      "monday": "Next Monday",
+      "week": "In 1 week",
+      "month": "In 1 month"
+    },
+    "customerDetails": "Customer details",
+    "properties": "Conversation properties",
+    "clearFilters": "Clear filters",
+    "replyToCustomer": "Reply to customer",
+    "removeImage": "Remove image",
+    "deliveryMode": "Reply notification",
+    "deliveryAuto": "Send reply automatically",
+    "deliveryAutoDescription": "Email if the reply remains unread after 5 minutes.",
+    "deliveryImmediate": "Send with email",
+    "deliveryImmediateDescription": "Send the reply and email together.",
+    "emailSkipped": "Read; no email needed",
+    "emailSending": "Resending…",
+    "emailAccepted": "Email notification queued",
+    "openCount": "{count} open conversations",
+    "unreadOpenCount": "{count} unread open conversations",
+    "unread": "Unread conversation",
+    "handoffNotices": {
+      "user_requested": "Handed to support at the customer’s request.",
+      "knowledge_gap": "Handed to support for further guidance.",
+      "sensitive_or_permission": "Handed to support for privacy or access assistance.",
+      "dissatisfied": "Handed to support because the issue remains unresolved.",
+      "ai_error": "Handed to support because the AI could not continue.",
+      "support_rule": "Handed to support based on a configured rule.",
+      "builtin-billing": "Handed to support for billing assistance.",
+      "builtin-account-access": "Handed to support for account access assistance.",
+      "builtin-privacy-legal": "Handed to support for a privacy-related request."
+    },
+    "noticeSnoozed": "{name} snoozed this conversation until {time}.",
+    "noticeClosed": "{name} closed this conversation."
   }
 }

@@ -252,8 +252,11 @@ a published article in a visible collection and the public Help Center enabled.
 
 The Widget SDK declares host-page context support through `init` with
 `capabilities.pageContext: true`. Without this capability, the Widget skips
-context collection immediately. Supported hosts have a 500 ms response timeout;
-missing context does not prevent sending a message.
+page-detail collection immediately. The verified parent origin from the init handshake
+is still attached when available. Supported hosts have a 500 ms response timeout;
+missing page details do not prevent sending a message. Context stores the HTTP(S)
+origin and pathname, never query parameters or fragments, so reply emails can link
+back to the host product page.
 
 ---
 
@@ -291,6 +294,9 @@ The domain must be verified with your email provider.
 
 ### Cloudflare Workers
 
+- Inbox requires the `feedlog-inbox` Queue: create it with
+  `pnpm exec wrangler queues create feedlog-inbox` before deploying. The producer,
+  consumer and daily recovery cron are configured in `wrangler.toml`.
 - `DATABASE_URL` is **replaced** by the `POSTGRES` Hyperdrive binding —
   see [`wrangler.toml`](../wrangler.toml) and the [Workers deploy guide](./deploy/cloudflare-workers.md).
 - `S3_*` doesn't apply — blob storage uses the `BLOB` R2 binding.
@@ -303,6 +309,8 @@ The domain must be verified with your email provider.
 
 ### Vercel
 
+- Inbox requires Vercel Queues for delayed tasks. The build configures the
+  `feedlog-inbox` topic trigger; `vercel.json` schedules daily recovery.
 - All env vars set via the dashboard or `vercel env add`.
 - Make sure `DATABASE_URL` is enabled for both **Production** and
   **Preview** scopes, otherwise the build container can't run migrations.
@@ -310,6 +318,8 @@ The domain must be verified with your email provider.
 
 ### Docker / bare Node
 
+- Inbox restores persisted task timers on startup and runs recovery every five
+  minutes. No external queue service or host crontab is required.
 - All env vars set via `-e` on `docker run`, `environment:` in
   docker-compose, or your orchestrator's secret store. All values are
   read at runtime — no rebuild needed when rotating credentials.

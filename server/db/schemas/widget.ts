@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, varchar, jsonb, timestamp, uuid, integer, bigint, primaryKey, index, check } from 'drizzle-orm/pg-core'
+import { pgTable, text, boolean, varchar, jsonb, timestamp, uuid, integer, bigint, primaryKey, index, check, smallint, unique } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
 import { uuidv7 } from 'uuidv7'
 import { organization } from './auth'
@@ -40,16 +40,27 @@ export const conversation = pgTable('conversation', {
   id: uuid().primaryKey().$defaultFn(() => uuidv7()),
   orgId: text('org_id').notNull(),
   userId: text('user_id').notNull(),
+  status: text().$type<'ai_handling' | 'open' | 'pending' | 'snoozed' | 'closed'>().notNull().default('ai_handling'),
+  priority: smallint().notNull().default(0),
+  stateDueAt: timestamp('state_due_at', { withTimezone: true }),
   // NULL = never reached a terminal reply; the list falls back to the first message.
   title: varchar({ length: 200 }),
   previewText: text('preview_text'),
   lastMessageAt: timestamp('last_message_at', { withTimezone: true }).notNull().defaultNow(),
   unread: boolean().notNull().default(false),
+  customerReadSeq: bigint('customer_read_seq', { mode: 'number' }).notNull().default(0),
   lastSeq: bigint('last_seq', { mode: 'number' }).notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('idx_conversation_owner').on(t.orgId, t.userId, sql`${t.lastMessageAt} DESC`, sql`${t.id} DESC`),
   index('idx_conversation_unread').on(t.orgId, t.userId, sql`${t.lastMessageAt} DESC`, sql`${t.id} DESC`).where(sql`${t.unread} = true AND ${t.lastSeq} > 0`),
+  unique('conversation_org_id_unique').on(t.orgId, t.id),
+  index('idx_inbox_status_time').on(t.orgId, t.status, sql`${t.lastMessageAt} DESC`, sql`${t.id} DESC`),
+  index('idx_inbox_time').on(t.orgId, sql`${t.lastMessageAt} DESC`, sql`${t.id} DESC`),
+  index('idx_conversation_due').on(t.stateDueAt, t.id).where(sql`${t.stateDueAt} IS NOT NULL`),
+  check('conversation_status', sql`${t.status} IN ('ai_handling','open','pending','snoozed','closed')`),
+  check('conversation_priority', sql`${t.priority} IN (0,1)`),
+  check('conversation_state_due', sql`${t.status} = 'ai_handling' OR (${t.status} IN ('pending','snoozed') AND ${t.stateDueAt} IS NOT NULL) OR (${t.status} IN ('open','closed') AND ${t.stateDueAt} IS NULL)`),
   check('conversation_last_seq', sql`${t.lastSeq} >= 0`),
 ])
 

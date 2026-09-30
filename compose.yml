@@ -15,7 +15,7 @@ services:
       retries: 10
 
   app:
-    image: ghcr.io/linkcraftstudio/feedlog:latest
+    image: ${FEEDLOG_IMAGE:-ghcr.io/linkcraftstudio/feedlog:latest}
     restart: unless-stopped
     depends_on:
       db:

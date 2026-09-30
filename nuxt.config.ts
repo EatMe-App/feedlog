@@ -182,10 +182,21 @@ export default defineNuxtConfig({
       traceAlias: mastraTraceAlias,
     },
     // Mastra's hashing dependency ships a native Wasm module for Workers.
-    experimental: { wasm: true },
+    experimental: { wasm: true, tasks: true },
+    tasks: {
+      'inbox:schedule': { handler: resolver.resolve('./server/tasks/inbox/schedule.ts') },
+    },
+    scheduledTasks: {
+      [!process.env.NITRO_PRESET?.startsWith('cloudflare') && !process.env.NITRO_PRESET?.startsWith('vercel') && process.env.VERCEL !== '1'
+        ? '*/5 * * * *' : '0 3 * * *']: ['inbox:schedule'],
+    },
+    vercel: { functions: { experimentalTriggers: [{ type: 'queue/v2beta', topic: 'feedlog-inbox', retryAfterSeconds: 60 }] } },
     // Workers use pg's JavaScript client; its optional native addon is Node-only.
     alias: process.env.NITRO_PRESET?.startsWith('cloudflare')
-      ? { 'pg-native': resolver.resolve('./server/lib/agent/pg-native-unavailable.cjs') }
+      ? {
+          'pg-native': resolver.resolve('./server/lib/agent/pg-native-unavailable.cjs'),
+          '@vercel/queue': resolver.resolve('./server/lib/inbox/vercel-queue-unavailable.ts'),
+        }
       : {},
     // Keep CF Workers' native node:fs / path / process available at runtime so
     // the cf-setup module can read bundled migration files via `/bundle/...`.

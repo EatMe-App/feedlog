@@ -42,24 +42,24 @@ test('prompt and tools omit unavailable knowledge, creation, voting and empty co
   }
   const prompt = renderAgentSystemPrompt(context)
   assert.match(prompt, /Example Product/)
-  assert.match(prompt, /support team directly/)
+  assert.match(prompt, /handoff_to_human/)
   assert.match(prompt, /only to their own feedback/)
   for (const text of ['### Product Questions', '## Article Catalog', '**Create:**', '**Vote', '**Available boards**', 'Use a vote for simple agreement.', 'configured situations:', 'undefined', '{{']) assert.equal(prompt.includes(text), false, text)
   const bundle = feedlogTools({} as any, {} as Actor, 'conversation', 'run', 'trigger', new AbortController().signal, () => {}, context)
-  assert.deepEqual(Object.keys(bundle.tools).sort(), ['add_feedback_comment', 'get_feedback', 'search_feedback', 'update_feedback', 'update_feedback_comment'])
+  assert.deepEqual(Object.keys(bundle.tools).sort(), ['add_feedback_comment', 'get_feedback', 'handoff_to_human', 'search_feedback', 'update_feedback', 'update_feedback_comment'])
 })
 
 test('prompt keeps product configuration beside its rules and distinguishes admin subscriptions', () => {
   const context: AgentPromptContext = {
     productName: 'Example Product',
     boards: [{ id: 'board-1', name: 'Suggestions', description: 'New product capabilities' }],
-    supportEmail: 'support@example.invalid', supportRules: ['the customer requests an invoice correction'],
+    supportEmail: 'support@example.invalid', supportRules: [{ id: 'invoice-correction', scenario: 'the customer requests an invoice correction' }],
     knowledgeEnabled: true, articles: [{ id: 'article-1', title: 'Product guide', description: 'Getting started' }], feedback: { create: true, vote: true, subscribe: true, commentScope: 'all' },
   }
   const prompt = renderAgentSystemPrompt(context)
   assert.ok(prompt.indexOf('### Feedback') >= 0)
   assert.ok(prompt.indexOf('board-1') > prompt.indexOf('### Feedback'))
-  assert.ok(prompt.indexOf('support@example.invalid') > prompt.indexOf('## Privacy'))
+  assert.match(prompt, /reason=support_rule/)
   assert.match(prompt, /Suggestions \(ID: board-1\) — New product capabilities/)
   assert.match(prompt, /\*\*Vote and subscribe:\*\*/)
   const adminPrompt = renderAgentSystemPrompt({ ...context, feedback: { ...context.feedback, subscribe: false } })
@@ -90,7 +90,7 @@ test('prompt context reads tenant configuration fresh and includes only enabled 
     await pool.query("INSERT INTO help_article (id,org_id,collection_id,short_id,slug,status,title,content,tsv,position) VALUES ($1,$2,$3,'prmpt1','test-guide','published','Test guide','Test content',to_tsvector('english','Test guide Test content'),0)", [articleId, orgId, collectionId])
     const enabled = await loadAgentPromptContext(pool, actor)
     assert.equal(enabled.supportEmail, 'team@example.invalid')
-    assert.deepEqual(enabled.supportRules, ['an enabled custom case'])
+    assert.deepEqual(enabled.supportRules, [{ id: 'on', scenario: 'an enabled custom case' }])
     assert.equal(enabled.knowledgeEnabled, true)
     assert.deepEqual(enabled.articles, [{ id: articleId, title: 'Test guide', description: null }])
     const bundle = feedlogTools(event, actor, 'conversation', 'run', 'trigger', new AbortController().signal, () => {}, enabled)

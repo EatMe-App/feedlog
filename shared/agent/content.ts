@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { systemEventPart } from '../inbox/state'
 
 export const textPart = z.object({ type: z.literal('text'), text: z.string().min(1).refine(value => !!value.trim()) }).strict()
 export const imagePart = z.object({ type: z.literal('image'), storage_key: z.string().min(1).max(1000) }).strict()
@@ -9,6 +10,7 @@ const feedbackFields = {
 }
 const commentFields = { ...feedbackFields, comment_id: z.uuid(), comment_text: z.string().min(1) }
 export const contentPart = z.discriminatedUnion('type', [
+  systemEventPart,
   textPart, imagePart,
   z.object({ type: z.literal('article_reference'), articles: z.array(z.object({ article_id: z.uuid(), slug: z.string().min(1), title: z.string().min(1) })).min(1) }),
   ...(['feedback_created', 'feedback_updated', 'feedback_upvoted'] as const).map(type => z.object({ type: z.literal(type), ...feedbackFields })),
@@ -20,6 +22,12 @@ export const customerContent = z.object({ parts: z.array(z.discriminatedUnion('t
   'Message text must not exceed 4000 characters',
 )
 export const pageContext = z.object({
+  origin: z.string().max(2000).refine(value => {
+    try {
+      const url = new URL(value)
+      return ['http:', 'https:'].includes(url.protocol) && url.origin === value
+    } catch { return false }
+  }),
   pathname: z.string().max(2000).refine(value => /^\/(?!\/)/.test(value) && !/[?#\\]/.test(value)),
   title: z.string().max(500).optional(), description: z.string().max(2000).optional(),
 }).strict().partial()
@@ -32,8 +40,8 @@ export type Part = Content['parts'][number]
 export type FeedbackPart = Extract<Part, { feedback_id: string }>
 export type PageContext = z.infer<typeof pageContext>
 export type ChatInput = z.infer<typeof chatInput>
-export interface Item { id: string; seq: number; authorType: 'customer' | 'agent'; content: Content; context: PageContext | null; agentRunId: string | null; createdAt: string }
+export interface Item { author?: { name: string | null } | null; notice?: 'handoff' | 'closed' | 'reopened'; id: string; seq: number; authorType: 'customer' | 'agent' | 'staff' | 'system'; content: Content; context: PageContext | null; agentRunId: string | null; createdAt: string }
 export interface Run { id: string; triggerItemId: string; status: 'running' | 'completed' | 'failed' | 'cancelled'; error: string | null; startedAt: string; deadlineAt: string; finishedAt: string | null }
-export interface Conversation { id: string; title: string | null; lastSeq: number; unread: boolean }
-export interface Detail { conversation: Conversation; items: Item[]; runs: Run[]; nextBeforeSeq: number | null }
+export interface Conversation { id: string; title: string | null; lastSeq: number; unread: boolean; handling?: 'ai' | 'human' | 'closed' }
+export interface Detail { conversation: Conversation; items: Item[]; runs: Run[]; nextBeforeSeq: number | null; nextAfterSeq?: number; hasMore?: boolean }
 export type StreamEvent = { type: 'run'; runId: string } | { type: 'text'; delta: string } | { type: 'tool'; runId: string; callId: string; name: string; phase: 'start' | 'finish'; data: unknown; durationMs?: number } | { type: 'finish'; runId: string } | { type: 'error'; message: string }

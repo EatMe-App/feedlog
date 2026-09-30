@@ -62,6 +62,8 @@ export interface PostListItem {
 
 // Detail (includes content, excludes excerpt)
 export interface PostDetail {
+  sourceConversationId?: string | null
+  sourceConversationTitle?: string | null
   id: string
   slug: string
   title: string

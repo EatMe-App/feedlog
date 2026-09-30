@@ -17,17 +17,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-// 2h / 5d / 2w / 2mo, which useTimeAgo() cannot produce.
-function compactAge(d: string | Date): string {
-  const mins = Math.max(1, Math.floor((Date.now() - new Date(d).getTime()) / 60000))
-  if (mins < 60) return t('widget.timeAgoMinute', { n: mins })
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return t('widget.timeAgoHour', { n: hours })
-  const days = Math.floor(hours / 24)
-  if (days < 7) return t('widget.timeAgoDay', { n: days })
-  if (days < 30) return t('widget.timeAgoWeek', { n: Math.floor(days / 7) })
-  return t('widget.timeAgoMonth', { n: Math.floor(days / 30) })
-}
+const compactAge = useConversationTime()
 
 const TITLE_FALLBACK_CHARS = 20
 function rowTitle(c: WidgetConversationItem): string {

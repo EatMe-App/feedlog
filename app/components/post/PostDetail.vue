@@ -2,6 +2,7 @@
 import '~/assets/css/md-editor-preview.css'
 import { toast } from 'vue-sonner'
 import { sanitizeAttachmentHtml } from '~/utils/attachment';
+const localePath = useLocalePath()
 
 // Event types for post mutations
 export interface PostUpdatedEvent {
@@ -24,6 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   updated: [post: PostUpdatedEvent]
   deleted: [postId: string]
+  sourceConversation: [conversationId: string]
 }>()
 
 const { onUploadImg } = useUploadImg()
@@ -572,6 +574,18 @@ async function handleShare() {
               </div>
             </div>
           </div>
+        </div>
+        <div v-if="post.sourceConversationId" data-source-conversation>
+          <h4 class="font-heading text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-3">{{ $t('inbox.sourceConversation') }}</h4>
+          <NuxtLink
+            :to="localePath(`/dashboard/inbox?conversationId=${post.sourceConversationId}`)"
+            :title="post.sourceConversationTitle || $t('inbox.sourceConversation')"
+            class="flex min-w-0 items-center gap-2.5 rounded-sm text-sm font-semibold text-primary underline underline-offset-4 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            @click="emit('sourceConversation', post.sourceConversationId)"
+          >
+            <Icon name="lucide:message-square" size="16" class="shrink-0" />
+            <span class="min-w-0 truncate">{{ post.sourceConversationTitle || $t('inbox.sourceConversation') }}</span>
+          </NuxtLink>
         </div>
         <!-- Admins never receive post-thread email, so the card would lie to them. -->
         <PostSubscribeCard v-if="post.id && hasAccount && !isOrgManager && !isMerged" :post-id="post.id" :subscribed="post.subscribed ?? false" @update:subscribed="post.subscribed = $event" />

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { ChatInput, Detail, Item, Run } from '#layers/feedlog/shared/agent/content'
+import WidgetEmbedImage from './WidgetEmbedImage.vue'
+import type { ChatInput, Content, Detail, Item, Run } from '#layers/feedlog/shared/agent/content'
 import { readAgentEvents } from '#layers/feedlog/shared/agent/sse'
-import { resolveAttachmentUrl } from '#layers/feedlog/app/utils/attachment'
 import { widgetEmbedKey } from '#layers/feedlog/app/composables/useWidgetEmbed'
 import { widgetProtocolKey } from '#layers/feedlog/app/composables/useWidgetProtocol'
 import type { WidgetChatResume } from '#layers/feedlog/app/composables/useWidgetResume'
@@ -12,6 +12,8 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ authRequired: []; filed: []; replied: [id: string, lastSeq: number]; started: [id: string]; busy: [value: boolean]; stateChange: [state: WidgetChatResume] }>()
 const { t } = useI18n()
+const messageTime = useConversationTime()
+const messageAuthor = (item: Item) => item.authorType === 'customer' ? t('widget.messageYou') : item.authorType === 'agent' ? t('widget.messageAI') : item.author?.name ? t('widget.messageStaffNamed', { name: item.author.name }) : t('widget.messageStaff')
 const { user, widgetFetch, widgetRequest, ensureIdentity } = inject(widgetEmbedKey)!
 const protocol = inject(widgetProtocolKey, null)
 const apiBase = '/api/widget/conversations'
@@ -28,12 +30,18 @@ const failure = ref('')
 const pending = ref<ChatInput | null>(null)
 const articleSlug = ref<string | null>(null)
 const observedSeq = ref(0)
+let chatActive = true
+function reportRead(id: string) {
+  if (chatActive && !document.hidden && !articleSlug.value && observedSeq.value > 0) emit('replied', id, observedSeq.value)
+}
+const handlingMode = ref<'ai' | 'human' | 'closed'>('ai')
 const bodyEl = ref<HTMLElement | null>(null)
 const draftEl = ref<HTMLTextAreaElement | null>(null)
 const latestRun = computed(() => runs.value.at(-1))
-const busy = computed(() => sending.value || latestRun.value?.status === 'running')
-const canRetry = computed(() => !!pending.value || (items.value.at(-1)?.authorType === 'customer' && latestRun.value?.status !== 'running'))
+const busy = computed(() => sending.value || (handlingMode.value === 'ai' && latestRun.value?.status === 'running'))
+const canRetry = computed(() => !!pending.value || (handlingMode.value === 'ai' && items.value.at(-1)?.authorType === 'customer' && latestRun.value?.status !== 'running'))
 const resumeKey = 'feedlog:widget:agent-pending'
+const hasFeedbackCard = (content: Content) => content.parts.some(part => 'feedback_id' in part)
 let version = 0
 
 function savePending() {
@@ -167,6 +175,8 @@ async function loadHistory(older = false) {
   const suffix = older && nextBeforeSeq.value ? `?beforeSeq=${nextBeforeSeq.value}` : ''
   const data = await widgetFetch<Detail>(`${apiBase}/${id}/items${suffix}`)
   if (current !== version) return
+  handlingMode.value = data.conversation.handling ?? 'ai'
+  if (handlingMode.value !== 'ai') transient.value = ''
   items.value = older ? [...data.items, ...items.value] : data.items
   const merged = new Map((older ? runs.value : []).map(run => [run.id, run]))
   for (const run of data.runs) merged.set(run.id, run)
@@ -174,9 +184,9 @@ async function loadHistory(older = false) {
   nextBeforeSeq.value = data.nextBeforeSeq
 
   if (!older) {
-    observedSeq.value = data.conversation.lastSeq
+    observedSeq.value = data.nextAfterSeq ?? data.conversation.lastSeq
     await nextTick()
-    if (!articleSlug.value) emit('replied', id, observedSeq.value)
+    reportRead(id)
   }
 }
 async function refreshStatus() {
@@ -220,8 +230,9 @@ async function submit(input: ChatInput) {
     savePending()
     const response = await widgetRequest(`${apiBase}/${id}/chat`, { method: 'POST', body: JSON.stringify(input) })
     if (response.headers.get('content-type')?.includes('application/json')) {
-      await response.json()
+      const result: Pick<Detail, 'conversation'> = await response.json()
       if (current !== version) return
+      handlingMode.value = result.conversation.handling ?? handlingMode.value
       confirmInput(input)
       emit('started', id)
     } else {
@@ -229,11 +240,28 @@ async function submit(input: ChatInput) {
       await readAgentEvents(response.body, (name, data) => {
         if (current !== version) return
         if (name === 'run') {
+          handlingMode.value = 'ai'
           confirmInput(input)
           emit('started', id)
         }
         if (name === 'text') { transient.value += data.delta; scrollToBottom() }
         if (name === 'finish') finished = true
+        if (name === 'handoff' || name === 'closed') {
+          if (name === 'handoff' && !items.value.some(item => item.id === data.noticeItemId)) {
+            // The event confirms persistence; render it before the history fetch.
+            // Reusing its ID lets history update the same bubble without a gap.
+            items.value.push({
+              id: data.noticeItemId, seq: data.lastSeq, authorType: 'system', notice: 'handoff',
+              content: { parts: [{ type: 'text', text: t('widget.conversationNotices.handoff') }] },
+              context: null, agentRunId: null, createdAt: new Date().toISOString(),
+            })
+          }
+          transient.value = ''
+          failure.value = ''
+          handlingMode.value = name === 'closed' ? 'closed' : 'human'
+          finished = true
+          scrollToBottom()
+        }
         if (name === 'error') failure.value = data.message
       })
     }
@@ -293,6 +321,8 @@ async function openConversation(id: string | null) {
   failure.value = ''
   sending.value = false
   awaitingRun.value = false
+  observedSeq.value = 0
+  handlingMode.value = 'ai'
   if (!id) return
   loadingThread.value = true
   try { await loadHistory() } catch { failure.value = t('widget.loadFailed') }
@@ -317,8 +347,33 @@ onMounted(async () => {
     }
   } else await openConversation(props.openId)
 })
-onBeforeUnmount(() => { version++ })
+let polling: ReturnType<typeof setInterval> | undefined
+let pollingBusy = false
+onMounted(() => { polling = setInterval(async () => {
+  if (!chatActive || articleSlug.value || !conversationId.value || document.hidden || loadingThread.value || sending.value || pollingBusy) return
+  const current = version
+  const id = conversationId.value
+  pollingBusy = true
+  try {
+    const data = await widgetFetch<Detail>(`${apiBase}/${id}/items?afterSeq=${observedSeq.value}`)
+    if (current !== version) return
+    const merged = new Map(items.value.map(item => [item.id, item]))
+    for (const item of data.items) merged.set(item.id, item)
+    items.value = [...merged.values()].sort((a, b) => a.seq - b.seq)
+    handlingMode.value = data.conversation.handling ?? 'ai'
+    if (handlingMode.value !== 'ai') transient.value = ''
+    const runMap = new Map(runs.value.map(run => [run.id, run]))
+    for (const run of data.runs) runMap.set(run.id, run)
+    runs.value = [...runMap.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt))
+    observedSeq.value = data.nextAfterSeq ?? observedSeq.value
+    if (data.items.length) { await nextTick(); reportRead(id); scrollToBottom() }
+  } catch { /* Preserve the conversation and retry on the next visible interval. */ }
+  finally { pollingBusy = false }
+}, 5000) })
+onBeforeUnmount(() => { version++; clearInterval(polling) })
+onDeactivated(() => { chatActive = false })
 onActivated(() => {
+  chatActive = true
   if (conversationId.value && !busy.value && !loadingThread.value) void refreshStatus()
 })
 function openFeedback(slug: string) {
@@ -331,7 +386,7 @@ function openArticle(slug: string) {
 async function closeArticle() {
   articleSlug.value = null
   await nextTick()
-  if (conversationId.value) emit('replied', conversationId.value, observedSeq.value)
+  if (conversationId.value) reportRead(conversationId.value)
 }
 </script>
 
@@ -342,14 +397,31 @@ async function closeArticle() {
     <button v-if="nextBeforeSeq" class="block mx-auto text-xs text-primary" @click="loadHistory(true)">{{ t('widget.earlierMessages') }}</button>
     <div v-if="!items.length && !loadingThread" class="max-w-[88%] rounded-lg border bg-card px-3 py-2.5 text-[13.5px]">{{ t('widget.greeting', { product: productName }) }}</div>
     <template v-for="item in items" :key="item.id">
-      <div class="flex" :class="item.authorType === 'customer' ? 'justify-end' : 'justify-start'" :data-message-id="item.id" :data-author="item.authorType">
-        <div class="min-w-0 rounded-lg px-3 py-2.5 text-[13.5px] leading-normal" :class="[item.content.parts.some(part => 'feedback_id' in part) ? 'max-w-[92%]' : 'max-w-[82%]', item.authorType === 'customer' ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-card border border-border rounded-bl-sm']">
-          <WidgetEmbedParts :content="item.content" @feedback="openFeedback" @article="openArticle" />
+      <div v-if="item.notice === 'handoff'" class="flex justify-start" :data-message-id="item.id" data-author="system">
+        <div class="min-w-0 max-w-[82%]">
+          <div class="rounded-2xl rounded-bl-sm border border-border bg-card px-3 py-2.5 text-[13.5px] font-normal leading-normal" data-handoff-message>{{ t('widget.conversationNotices.handoff') }}</div>
+          <div class="mt-1.5 flex min-w-0 items-center gap-1 px-1 text-[10px] text-muted-foreground" data-message-meta>
+            <span class="truncate font-semibold text-foreground dark:text-white">{{ t('widget.messageAI') }}</span>
+            <span aria-hidden="true">·</span>
+            <time class="shrink-0" :datetime="item.createdAt">{{ messageTime(item.createdAt) }}</time>
+          </div>
+        </div>
+      </div>
+      <div v-else-if="!item.notice && item.authorType !== 'system'" class="flex" :class="item.authorType === 'customer' ? 'justify-end' : 'justify-start'" :data-message-id="item.id" :data-author="item.authorType">
+        <div class="min-w-0" :class="hasFeedbackCard(item.content) ? 'max-w-[92%]' : 'max-w-[82%]'">
+          <div class="rounded-2xl px-3 py-2.5 text-[13.5px] leading-normal" :class="item.authorType === 'customer' ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-card border border-border rounded-bl-sm'">
+            <WidgetEmbedParts :content="item.content" :plain-text="item.authorType !== 'agent'" @feedback="openFeedback" @article="openArticle" />
+          </div>
+          <div class="mt-1.5 flex min-w-0 items-center gap-1 px-1 text-[10px] text-muted-foreground" :class="item.authorType === 'customer' ? 'justify-end' : ''" data-message-meta>
+            <span class="truncate font-semibold text-foreground dark:text-white">{{ messageAuthor(item) }}</span>
+            <span aria-hidden="true">·</span>
+            <time class="shrink-0" :datetime="item.createdAt">{{ messageTime(item.createdAt) }}</time>
+          </div>
         </div>
       </div>
     </template>
     <div v-if="transient" class="max-w-[82%] rounded-lg rounded-bl-sm border border-border bg-card px-3 py-2.5 text-[13.5px] leading-normal"><WidgetEmbedMarkdown :text="transient" /></div>
-    <div v-else-if="busy && !awaitingRun" role="status" :aria-label="t('widget.thinking')" class="flex justify-start">
+    <div v-else-if="handlingMode === 'ai' && busy && !awaitingRun" role="status" :aria-label="t('widget.thinking')" class="flex justify-start">
       <div class="px-3.5 py-2.5 rounded-lg rounded-bl-sm bg-card border border-border text-xs text-muted-foreground flex items-center gap-1.5">
         <span class="flex items-center gap-1" aria-hidden="true">
           <span v-for="n in 3" :key="n" class="w-1 h-1 rounded-full bg-current opacity-40 typing-dot" :style="{ animationDelay: `${(n - 1) * 0.16}s` }" />
@@ -357,7 +429,7 @@ async function closeArticle() {
         {{ t('widget.thinking') }}
       </div>
     </div>
-    <div v-if="failure || (!sending && latestRun?.status === 'failed')" role="status" class="text-xs text-destructive">{{ failure || latestRun?.error }}</div>
+    <div v-if="failure || (!sending && handlingMode === 'ai' && latestRun?.status === 'failed')" role="status" class="text-xs text-destructive">{{ failure || latestRun?.error }}</div>
     <button v-if="canRetry && !sending" class="text-xs font-semibold text-primary" @click="retry">{{ t('widget.retryReply') }}</button>
     <button v-if="latestRun?.status === 'running' && !sending" class="text-xs text-primary" @click="refreshStatus">{{ t('widget.refreshStatus') }}</button>
   </div>
@@ -381,7 +453,7 @@ async function closeArticle() {
         :key="a.key"
         class="relative h-12 w-16 rounded-md overflow-hidden border border-border group"
       >
-        <img :src="resolveAttachmentUrl(a.key)!" :alt="a.name" class="w-full h-full object-cover">
+        <WidgetEmbedImage :storage-key="a.key" />
         <button
           class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
           :aria-label="t('widget.cancel')"
