@@ -67,6 +67,7 @@ watch(open, (isOpen) => {
             v-if="slug"
             :slug="slug"
             @updated="emit('updated', $event)"
+            @source-conversation="open = false"
             @deleted="(postId) => { emit('deleted', postId); open = false }"
           />
         </div>

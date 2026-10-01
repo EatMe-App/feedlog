@@ -23,10 +23,10 @@ export default defineNitroPlugin(() => {
   if (resendApiKey) {
     registerEmailProvider({
       name: 'resend',
-      send: async ({ to, subject, html, text, headers }) => {
+      send: async ({ to, subject, html, text, headers, idempotencyKey }) => {
         const response = await $fetch<{ id: string }>('https://api.resend.com/emails', {
           method: 'POST',
-          headers: { Authorization: `Bearer ${resendApiKey}` },
+          headers: { Authorization: `Bearer ${resendApiKey}`, ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) },
           body: { from, to, subject, html, text, headers },
           timeout: 10_000,
           retry: 0,

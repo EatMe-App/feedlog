@@ -168,6 +168,7 @@ overrides, and authentication toggles.
 - **Authentication** — Email / password, Google OAuth, GitHub OAuth, admin role handling — powered by [better-auth](https://www.better-auth.com).
 - **Comments & discussions** — Markdown-powered threads on every post.
 - **Notifications** — Authors and upvoters are subscribed automatically and emailed when a post's status changes or the team replies officially; unsubscribe per post at any time. Admins aren't notified. Requires an email provider.
+- **Inbox** — Manage Widget conversations, human handoffs and reply email notifications.
 
 ## Tech Stack
 

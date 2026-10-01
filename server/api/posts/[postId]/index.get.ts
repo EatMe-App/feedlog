@@ -1,5 +1,5 @@
 import { eq, and, sql } from 'drizzle-orm'
-import { post, user, vote } from '#layers/feedlog/server/db/schemas'
+import { post, user, vote, conversation } from '#layers/feedlog/server/db/schemas'
 
 // GET /api/posts/:slug — Get post detail
 export default defineEventHandler(async (event): Promise<PostDetail> => {
@@ -12,6 +12,7 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
   const [row] = await db
     .select({
       id: post.id,
+      sourceConversationId: post.sourceConversationId,
       slug: post.slug,
       title: post.title,
       content: post.content,
@@ -25,6 +26,7 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
       authorName: user.name,
       authorImage: user.image,
       authorEmail: user.email,
+      authorIsAnonymous: user.isAnonymous,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
     })
@@ -82,7 +84,22 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
 
   // Gates author.email below: shipping it to end users would hand every
   // reporter's address to anyone who opens a post.
-  const isStaff = !!getOrgMemberRole(session, orgId)
+  //
+  // A guest's address is a reserved-domain placeholder nobody can write to, so it
+  // is withheld from staff as well — showing it only invites someone to try.
+  const role = getOrgMemberRole(session, orgId)
+  const canReadInbox = role === 'owner' || role === 'manager'
+  setResponseHeader(event, 'Cache-Control', 'private, no-store')
+  const isStaff = !!role
+  const showAuthorEmail = isStaff && !row.authorIsAnonymous
+
+  // Fetch the display title only after the same permission check as the source ID.
+  let sourceConversationTitle: string | null = null
+  if (canReadInbox && row.sourceConversationId) {
+    const [source] = await db.select({ title: conversation.title }).from(conversation)
+      .where(and(eq(conversation.id, row.sourceConversationId), eq(conversation.orgId, orgId))).limit(1)
+    sourceConversationTitle = source?.title ?? null
+  }
 
   // If merged, fetch canonical post info
   let canonicalPost: { slug: string; title: string } | undefined
@@ -97,6 +114,7 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
 
   return {
     id: row.id,
+    ...(canReadInbox ? { sourceConversationId: row.sourceConversationId, sourceConversationTitle } : {}),
     slug: row.slug,
     title: row.title,
     content: row.content,
@@ -112,7 +130,8 @@ export default defineEventHandler(async (event): Promise<PostDetail> => {
       id: row.authorId,
       name: row.authorName,
       image: row.authorImage,
-      ...(isStaff ? { email: row.authorEmail } : {}),
+      isAnonymous: !!row.authorIsAnonymous,
+      ...(showAuthorEmail ? { email: row.authorEmail } : {}),
     },
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

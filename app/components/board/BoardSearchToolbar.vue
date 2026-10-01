@@ -135,6 +135,8 @@ defineExpose({ reset })
           v-show="!searchOpenMobile"
           class="h-10 w-10 p-0 sm:w-auto sm:px-4 rounded-lg text-xs sm:text-[15px] font-heading font-semibold shrink-0 justify-center"
           :title="$t('board.newRequest')"
+          data-fdl-action="feedback_composer_open"
+          data-fdl-source="toolbar"
           @click="emit('new-request')"
         >
           <Icon name="lucide:plus" size="18" />
